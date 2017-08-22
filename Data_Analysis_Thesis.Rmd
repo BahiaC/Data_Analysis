@@ -18,4 +18,21 @@ library("tidyverse")
 ```
 
 ##Setting up in R
+```{r}
+
+dep_biom <- "data/otu_table_final1_json.biom"
+#this biom is OTU clustered and chimeras removed 
+
+map_qiime <- read.table("data/mapping_depression_3.txt", header=TRUE, row.names=1)
+#this was the mapping file used in QIIME 
+
+map <- read.table("data/mapping_depression_f1.txt", header=TRUE, row.names=1)
+#this mapping file is being edited with new data? 
+
+tree <- "data/rep_set.tre"
+
+## Import Data to PhyloSeq
+
+
+```
 
