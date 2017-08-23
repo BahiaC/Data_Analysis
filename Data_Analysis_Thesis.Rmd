@@ -20,7 +20,7 @@ library("tidyverse")
 ##Setting up in R
 ```{r}
 
-dep_biom <- "data/otu_table_final1_json.biom"
+biom <- "data/otu_table_final1_json.biom"
 #this biom is OTU clustered and chimeras removed 
 
 map_qiime <- read.table("data/mapping_depression_3.txt", header=TRUE, row.names=1)
@@ -32,7 +32,42 @@ map <- read.table("data/mapping_depression_f1.txt", header=TRUE, row.names=1)
 tree <- "data/rep_set.tre"
 
 ## Import Data to PhyloSeq
-
+depression2017<-import_biom(biom, treefilename=tree)
+depression_map<-sample_data(map)
+depression2017<-merge_phyloseq(depression2017,depression_map)
+depression2017
+colnames(tax_table(depression2017)) = c("Domain", "Phylum", "Class", "Order", "Family", "Genus", "Species")
 
 ```
+
+```{r Cleaning up data}
+#Removed participant incorrectly enrolled and mock 
+depression2017_1<-subset_samples(depression2017, !(SampleID %in% c("P9.pre","P7.pre","P7.post", "mock")))
+
+#Rarefy to 11779
+depression2017_1rare<-rarefy_even_depth(depression2017_1, sample.size=11779, rngseed=711, replace=FALSE, trimOTUs=TRUE)
+
+#filter out rare OTUs
+depression2017_1rare_fil<- filter_taxa(depression2017_1rare, function(x) sum(x)>=10 & sum(x>0)>0.1*length(x), TRUE)
+```
+
+
+
+
+```{r Beta Diversity}
+depression2017_wuf<-distance(depression2017_1rare_fil, "wunifrac", type="samples")
+#Warning message:
+#In UniFrac(physeq, weighted = TRUE, ...) :
+  #Randomly assigning root as -- 193336 -- in the phylogenetic tree in the data you provided.
+depression2017_wuf_ord<-ordinate(depression2017_1rare_fil, method="PCoA", distance=depression2017_wuf)
+plot_ordination(depression2017_1rare_fil, depression2017_wuf_ord, type="samples",color="Participant")
+
+pre_con_rare_fil<-subset_samples(depression2017_1rare_fil, Participant %in% c("pre","Con"))
+pre_con_ord<-ordinate(pre_con_rare_fil, method="PCoA", "wunifrac")
+plot_ordination(pre_con_rare_fil,pre_con_ord, color="Participant")
+```
+
+
+
+
 
