@@ -17,54 +17,222 @@ library("reshape2")
 library("tidyverse")
 ```
 
-##Setting up in R
-```{r}
+#Setting up in R
+```{r Setting up in R}
 
-biom <- "data/otu_table_final1_json.biom"
-#this biom is OTU clustered and chimeras removed 
+#otu clustered and chimeras removed
+biom<-"data/otu_table_final1_json.biom"
 
-map_qiime <- read.table("data/mapping_depression_3.txt", header=TRUE, row.names=1)
-#this was the mapping file used in QIIME 
+#didn't run this as it wouldnt work
+map<-read.table("data/mapping_depression_f1.txt", header=TRUE, row.names=1)
 
-map <- read.table("data/mapping_depression_f1.txt", header=TRUE, row.names=1)
-#this mapping file is being edited with new data? 
+#had to run this comand as the other one (^) wouldnt work for some reason 
+map<-read.table(file.choose("data/mapping_depression_f1_txt"), sep="\t", header=TRUE, row.names=1)
 
-tree <- "data/rep_set.tre"
+#Normally would just use the read_tree command, but this particular tree is a bit different to ususal.
+tree<-read_tree("data/rep_set.tre")
 
 ## Import Data to PhyloSeq
 depression2017<-import_biom(biom, treefilename=tree)
+
 depression_map<-sample_data(map)
+
 depression2017<-merge_phyloseq(depression2017,depression_map)
+
+#18696 taxa and 142 samples
 depression2017
+
 colnames(tax_table(depression2017)) = c("Domain", "Phylum", "Class", "Order", "Family", "Genus", "Species")
 
 ```
 
+
+#Cleaning up data
 ```{r Cleaning up data}
+
 #Removed participant incorrectly enrolled and mock 
-depression2017_1<-subset_samples(depression2017, !(SampleID %in% c("P9.pre","P7.pre","P7.post", "mock")))
+depression2017_1<-subset_samples(depression2017, !(Sample %in% c("P9.pre","P7.pre","P7.post", "mock")))
+
+#18695 taxa and 138 samples
+depression2017_1
 
 #Rarefy to 11779
 depression2017_1rare<-rarefy_even_depth(depression2017_1, sample.size=11779, rngseed=711, replace=FALSE, trimOTUs=TRUE)
+##6843OTUs were removed because they are no longer present in any sample after random subsampling
+
+#11852 taxa and 132 samples (lost negative controls and two samples that only had max 15 seqs)
+depression2017_1rare
 
 #filter out rare OTUs
 depression2017_1rare_fil<- filter_taxa(depression2017_1rare, function(x) sum(x)>=10 & sum(x>0)>0.1*length(x), TRUE)
+
+#1318 taxa and 132 samples
+depression2017_1rare_fil
 ```
 
 
+#Rarefaction Curve
+```{r Rarefaction Curve}
+
+#Create a rarefaction curve to find the appropraite place for rarefying your data. Uses vegan for calculating the curve, and base R for plotting. 
+#Plot rarecurve
+t_otu_depression2017<-as.matrix(t(otu_table(depression2017_1)))
+curve<-rarecurve(t_otu_depression2017, step=500, label=FALSE, xlim= c(0,50000), ylim=c(0,2500), ylab = "OTU Count", xaxt="n")
+axis(1, xaxp=c(0, 100000, 50))
+curve
+#place a line over the curve where you proppose to rarefy
+abline(v=11779, col="red")
+
+```
 
 
+#subsetting phyloseq objects
+##havn't done this yet
+```{r, subsetting phyloseq objects}
+
+#You many want to remove certain samples or OTUs from the analysis.  There are several ways to do this in Phyloseq, all require creating a new Phyloseq object.
+#First example, subset to samples that match a string in a column of the sample data (i.e. the mapping file)
+practice2017_rare_controls<-subset_samples(practice2017_rare, Disease_status=="control")
+sample_data(practice2017_rare_controls)
+#Second example, subset to samples that match everything except the string in a column of the sample data
+practice2017_rare_disease<-subset_samples(practice2017_rare, Disease_status!="control")
+#Now check the sample data for your new object to make sure it did what you think it did.  In this example I'm only returning the column that lists Disease_status
+sample_data(practice2017_rare_disease)$Disease_status
+#Third example, subset to samples that match several strings in a column of the sample data
+practice2017_rare_disease2<-subset_samples(practice2017_rare, Disease_status%in%c("mdd", "recovering_mdd"))
+#And check the sample data as before.
+sample_data(practice2017_rare_disease2)$Disease_status
+#Forth example, subset to samples that match everything except several strings in a column of the sample data
+practice2017_rare_controls2<-subset_samples(practice2017_rare, !(Disease_status%in%c("mdd", "recovering_mdd")))
+#And check the sample data as before.
+sample_data(practice2017_rare_controls2)$Disease_status
+```
+
+#Alpha diversity analysis
+```{r, alpha diversity}
+
+#Once you have rarefied your data, explore the level of alpha diversity.  Uses phyloseq plot function which is built on ggplot2.  The x value will determine how samples are grouped along the x axis.
+plot_richness(depression2017_1rare_fil, x="Participant", measures=c("Observed", "Chao1","Shannon"))+
+  geom_boxplot()+xlab("Group")+ylab("Diversity")
+
+#Convert alpha diversity estimates to a data form we can use for statistical testing
+depression_rare_richness<-as.matrix(estimate_richness(depression2017_1rare_fil, measures=c("Observed","Chao1","Shannon")))
+
+##don't need this - row names are correct
+#row.names(practice2017_rare_richness)<-row.names(sample_data(practice2017_rare))
+
+depression_rare_richness<-cbind(depression_rare_richness,sample_data(depression2017_1rare_fil))
+
+depression_rare_richness
+
+#For comaparisons of alpha diversity of more than two groups, use the Kruskal-Wallis test 
+#Test if alpha diversity (observed) is significantly different between Disease_status groups
+kruskal.test(Observed ~ Participant, data=depression_rare_richness)
+##Kruskal-wallis rank sum test, pvalue 0.7935, thus no significant difference between populations, null hypothesis assumes samples are from identical populations
+
+#Now test if diversity is significantly different between controls and patients who were ever depressed (and recovering mdd groups (Original_status)
+#only two groups here so use Man-Whitney U test
+#null asserts that medians of two samples are indentical 
+wilcox.test(Observed ~ Dep_Con, data=depression_rare_richness)
+##data:  Observed by Dep_Con W = 762, p-value = 0.4822
+##alternative hypothesis: true location shift is not equal to 0
+
+wilcox.test(Observed ~ Con_A, data=depression_rare_richness)
+##data:  Observed by Con_A W = 170, p-value = 0.3028
+##alternative hypothesis: true location shift is not equal to 0
+
+##Warning message:
+##In wilcox.test.default(x = c(412, 401, 409, 445, 381, 434, 511,  :
+  ##cannot compute exact p-value with ties
+
+wilcox.test(Observed ~ Con_B, data=depression_rare_richness)
+##data:  Observed by Con_B W = 230.5, p-value = 0.8011
+##alternative hypothesis: true location shift is not equal to 0
+
+##Warning message:
+##In wilcox.test.default(x = c(511, 437, 539, 446, 343, 442, 416,  :
+  ##cannot compute exact p-value with ties
+
+wilcox.test(Observed ~ Pre_ProA, data=depression_rare_richness)
+##data:  Observed by Pre_ProA W = 227, p-value = 0.88
+##alternative hypothesis: true location shift is not equal to 0
+
+##Warning message:
+##In wilcox.test.default(x = c(412, 401, 409, 445, 381, 434, 511,  :
+  ##cannot compute exact p-value with ties
+
+wilcox.test(Observed ~ Pre_PostB, data=depression_rare_richness)
+##data:  Observed by Pre_PostB W = 263.5, p-value = 0.622
+##alternative hypothesis: true location shift is not equal to 0
+
+##Warning message:
+##In wilcox.test.default(x = c(511, 437, 539, 446, 343, 442, 416,  :
+  ##cannot compute exact p-value with ties
+
+wilcox.test(Observed ~ ProA_B, data=depression_rare_richness)
+##data:  Observed by ProA_B W = 180.5, p-value = 0.2244
+##alternative hypothesis: true location shift is not equal to 0
+
+##Warning message:
+##In wilcox.test.default(x = c(412, 401, 409, 445, 381, 434, 511,  :
+  ##cannot compute exact p-value with ties
+```
+
+
+#Beta Diversity
 ```{r Beta Diversity}
+
 depression2017_wuf<-distance(depression2017_1rare_fil, "wunifrac", type="samples")
-#Warning message:
-#In UniFrac(physeq, weighted = TRUE, ...) :
-  #Randomly assigning root as -- 193336 -- in the phylogenetic tree in the data you provided.
+##Warning message:
+##In UniFrac(physeq, weighted = TRUE, ...) :
+  ##Randomly assigning root as -- 302683 -- in the phylogenetic tree in the data you provided.
+
 depression2017_wuf_ord<-ordinate(depression2017_1rare_fil, method="PCoA", distance=depression2017_wuf)
 plot_ordination(depression2017_1rare_fil, depression2017_wuf_ord, type="samples",color="Participant")
 
-pre_con_rare_fil<-subset_samples(depression2017_1rare_fil, Participant %in% c("pre","Con"))
+pre_con_rare_fil<-subset_samples(depression2017_1rare_fil, Participant %in% c("Pre","Con"))
 pre_con_ord<-ordinate(pre_con_rare_fil, method="PCoA", "wunifrac")
+##Warning message:
+##In UniFrac(physeq, weighted = TRUE, ...) :
+  ##Randomly assigning root as -- 213885 -- in the phylogenetic tree in the data you provided.
 plot_ordination(pre_con_rare_fil,pre_con_ord, color="Participant")
+
+con_A_rare_fil<-subset_samples(depression2017_1rare_fil, Con_A %in% c("Con","A"))
+con_A_ord<-ordinate(con_A_rare_fil, method="PCoA", "wunifrac")
+##Warning message:
+##In UniFrac(physeq, weighted = TRUE, ...) :
+  ##Randomly assigning root as -- 369602 -- in the phylogenetic tree in the data you provided.
+plot_ordination(con_A_rare_fil,con_A_ord, color="Con_A")
+
+con_B_rare_fil<-subset_samples(depression2017_1rare_fil, Con_B %in% c("Con","B"))
+con_B_ord<-ordinate(con_B_rare_fil, method="PCoA", "wunifrac")
+##Warning message:
+##In UniFrac(physeq, weighted = TRUE, ...) :
+  ##Randomly assigning root as -- 367946 -- in the phylogenetic tree in the data you provided.
+plot_ordination(con_B_rare_fil,con_B_ord, color="Con_B")
+
+pre_proA_rare_fil<-subset_samples(depression2017_1rare_fil, Pre_ProA %in% c("pre","A"))
+pre_proA_ord<-ordinate(pre_proA_rare_fil, method="PCoA", "wunifrac")
+##Warning message:
+##In UniFrac(physeq, weighted = TRUE, ...) :
+  ##Randomly assigning root as -- 183686 -- in the phylogenetic tree in the data you provided.
+plot_ordination(pre_proA_rare_fil, pre_proA_ord, color="Pre_ProA")
+
+pre_proB_rare_fil<-subset_samples(depression2017_1rare_fil, Pre_PostB %in% c("pre","B"))
+pre_proB_ord<-ordinate(pre_proB_rare_fil, method="PCoA", "wunifrac")
+##Warning message:
+##In UniFrac(physeq, weighted = TRUE, ...) :
+  ##Randomly assigning root as -- 188433 -- in the phylogenetic tree in the data you provided.
+plot_ordination(pre_proB_rare_fil, pre_proB_ord, color="Pre_PostB")
+
+proA_B_rare_fil<-subset_samples(depression2017_1rare_fil, ProA_B %in% c("A","B"))
+proA_B_ord<-ordinate(proA_B_rare_fil, method="PCoA", "wunifrac")
+##Warning message:
+##In UniFrac(physeq, weighted = TRUE, ...) :
+  ##Randomly assigning root as -- 175438 -- in the phylogenetic tree in the data you provided.
+plot_ordination(proA_B_rare_fil, proA_B_ord, color="ProA_B")
+
+
 ```
 
 
