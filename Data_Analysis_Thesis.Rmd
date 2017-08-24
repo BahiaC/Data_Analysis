@@ -56,18 +56,19 @@ depression2017_1<-subset_samples(depression2017, !(Sample %in% c("P9.pre","P7.pr
 #18695 taxa and 138 samples
 depression2017_1
 
-#Rarefy to 11779
-depression2017_1rare<-rarefy_even_depth(depression2017_1, sample.size=11779, rngseed=711, replace=FALSE, trimOTUs=TRUE)
-##6843OTUs were removed because they are no longer present in any sample after random subsampling
+#filter out rare OTUs
+depression2017_fil<- filter_taxa(depression2017_1, function(x) sum(x)>=10 & sum(x>0)>0.1*length(x), TRUE)
+
+#2798 taxa and 138 samples
+depression2017_fil
+
+#Rarefy to 11175
+depression2017_rare<-rarefy_even_depth(depression2017_fil, sample.size=11175, rngseed=711, replace=FALSE, trimOTUs=TRUE)
+##6OTUs were removed because they are no longer present in any sample after random subsampling
 
 #11852 taxa and 132 samples (lost negative controls and two samples that only had max 15 seqs)
 depression2017_1rare
 
-#filter out rare OTUs
-depression2017_1rare_fil<- filter_taxa(depression2017_1rare, function(x) sum(x)>=10 & sum(x>0)>0.1*length(x), TRUE)
-
-#1318 taxa and 132 samples
-depression2017_1rare_fil
 ```
 
 
@@ -81,7 +82,7 @@ curve<-rarecurve(t_otu_depression2017, step=500, label=FALSE, xlim= c(0,50000), 
 axis(1, xaxp=c(0, 100000, 50))
 curve
 #place a line over the curve where you proppose to rarefy
-abline(v=11779, col="red")
+abline(v=11175, col="red")
 
 ```
 
@@ -112,70 +113,50 @@ sample_data(practice2017_rare_controls2)$Disease_status
 ```{r, alpha diversity}
 
 #Once you have rarefied your data, explore the level of alpha diversity.  Uses phyloseq plot function which is built on ggplot2.  The x value will determine how samples are grouped along the x axis.
-plot_richness(depression2017_1rare_fil, x="Participant", measures=c("Observed", "Chao1","Shannon"))+
+plot_richness(depression2017_rare, x="Participant", measures=c("Observed", "Chao1","Shannon"))+
   geom_boxplot()+xlab("Group")+ylab("Diversity")
 
 #Convert alpha diversity estimates to a data form we can use for statistical testing
-depression_rare_richness<-as.matrix(estimate_richness(depression2017_1rare_fil, measures=c("Observed","Chao1","Shannon")))
+depression_rare_richness<-as.matrix(estimate_richness(depression2017_rare, measures=c("Observed","Chao1","Shannon")))
 
 ##don't need this - row names are correct
 #row.names(practice2017_rare_richness)<-row.names(sample_data(practice2017_rare))
 
-depression_rare_richness<-cbind(depression_rare_richness,sample_data(depression2017_1rare_fil))
+depression_rare_richness<-cbind(depression_rare_richness,sample_data(depression2017_rare))
 
 depression_rare_richness
 
 #For comaparisons of alpha diversity of more than two groups, use the Kruskal-Wallis test 
 #Test if alpha diversity (observed) is significantly different between Disease_status groups
 kruskal.test(Observed ~ Participant, data=depression_rare_richness)
-##Kruskal-wallis rank sum test, pvalue 0.7935, thus no significant difference between populations, null hypothesis assumes samples are from identical populations
+##Kruskal-wallis rank sum test, pvalue 0.75498, thus no significant difference between populations, null hypothesis assumes samples are from identical populations
 
 #Now test if diversity is significantly different between controls and patients who were ever depressed (and recovering mdd groups (Original_status)
 #only two groups here so use Man-Whitney U test
 #null asserts that medians of two samples are indentical 
 wilcox.test(Observed ~ Dep_Con, data=depression_rare_richness)
-##data:  Observed by Dep_Con W = 762, p-value = 0.4822
+##data:  Observed by Dep_Con W = 769.5, p-value = 0.3755
 ##alternative hypothesis: true location shift is not equal to 0
 
 wilcox.test(Observed ~ Con_A, data=depression_rare_richness)
-##data:  Observed by Con_A W = 170, p-value = 0.3028
-##alternative hypothesis: true location shift is not equal to 0
+##data:  Observed by Con_A W = 180, p-value = 0.4416
+
 
 ##Warning message:
 ##In wilcox.test.default(x = c(412, 401, 409, 445, 381, 434, 511,  :
   ##cannot compute exact p-value with ties
 
 wilcox.test(Observed ~ Con_B, data=depression_rare_richness)
-##data:  Observed by Con_B W = 230.5, p-value = 0.8011
-##alternative hypothesis: true location shift is not equal to 0
-
-##Warning message:
-##In wilcox.test.default(x = c(511, 437, 539, 446, 343, 442, 416,  :
-  ##cannot compute exact p-value with ties
+##data:  Observed by Con_B W = 216, p-value = 0.9297
 
 wilcox.test(Observed ~ Pre_ProA, data=depression_rare_richness)
-##data:  Observed by Pre_ProA W = 227, p-value = 0.88
-##alternative hypothesis: true location shift is not equal to 0
-
-##Warning message:
-##In wilcox.test.default(x = c(412, 401, 409, 445, 381, 434, 511,  :
-  ##cannot compute exact p-value with ties
+##data:  Observed by Pre_ProA W = 239, p-value = 0.654
 
 wilcox.test(Observed ~ Pre_PostB, data=depression_rare_richness)
-##data:  Observed by Pre_PostB W = 263.5, p-value = 0.622
-##alternative hypothesis: true location shift is not equal to 0
-
-##Warning message:
-##In wilcox.test.default(x = c(511, 437, 539, 446, 343, 442, 416,  :
-  ##cannot compute exact p-value with ties
+##data:  Observed by Pre_PostB W = 265.5, p-value = 0.5892
 
 wilcox.test(Observed ~ ProA_B, data=depression_rare_richness)
-##data:  Observed by ProA_B W = 180.5, p-value = 0.2244
-##alternative hypothesis: true location shift is not equal to 0
-
-##Warning message:
-##In wilcox.test.default(x = c(412, 401, 409, 445, 381, 434, 511,  :
-  ##cannot compute exact p-value with ties
+##data:  Observed by ProA_B W = 203, p-value = 0.504
 ```
 
 
@@ -185,7 +166,7 @@ wilcox.test(Observed ~ ProA_B, data=depression_rare_richness)
 depression2017_wuf<-distance(depression2017_1rare_fil, "wunifrac", type="samples")
 ##Warning message:
 ##In UniFrac(physeq, weighted = TRUE, ...) :
-  ##Randomly assigning root as -- 302683 -- in the phylogenetic tree in the data you provided.
+  ##Randomly assigning root as -- 338222 -- in the phylogenetic tree in the data you provided.
 
 depression2017_wuf_ord<-ordinate(depression2017_1rare_fil, method="PCoA", distance=depression2017_wuf)
 plot_ordination(depression2017_1rare_fil, depression2017_wuf_ord, type="samples",color="Participant")
@@ -194,42 +175,42 @@ pre_con_rare_fil<-subset_samples(depression2017_1rare_fil, Participant %in% c("P
 pre_con_ord<-ordinate(pre_con_rare_fil, method="PCoA", "wunifrac")
 ##Warning message:
 ##In UniFrac(physeq, weighted = TRUE, ...) :
-  ##Randomly assigning root as -- 213885 -- in the phylogenetic tree in the data you provided.
+  ##Randomly assigning root as -- 196083 -- in the phylogenetic tree in the data you provided.
 plot_ordination(pre_con_rare_fil,pre_con_ord, color="Participant")
 
 con_A_rare_fil<-subset_samples(depression2017_1rare_fil, Con_A %in% c("Con","A"))
 con_A_ord<-ordinate(con_A_rare_fil, method="PCoA", "wunifrac")
 ##Warning message:
 ##In UniFrac(physeq, weighted = TRUE, ...) :
-  ##Randomly assigning root as -- 369602 -- in the phylogenetic tree in the data you provided.
+  ##Randomly assigning root as -- 4103317 -- in the phylogenetic tree in the data you provided.
 plot_ordination(con_A_rare_fil,con_A_ord, color="Con_A")
 
 con_B_rare_fil<-subset_samples(depression2017_1rare_fil, Con_B %in% c("Con","B"))
 con_B_ord<-ordinate(con_B_rare_fil, method="PCoA", "wunifrac")
 ##Warning message:
 ##In UniFrac(physeq, weighted = TRUE, ...) :
-  ##Randomly assigning root as -- 367946 -- in the phylogenetic tree in the data you provided.
+  ##Randomly assigning root as -- 328573 -- in the phylogenetic tree in the data you provided.
 plot_ordination(con_B_rare_fil,con_B_ord, color="Con_B")
 
 pre_proA_rare_fil<-subset_samples(depression2017_1rare_fil, Pre_ProA %in% c("pre","A"))
 pre_proA_ord<-ordinate(pre_proA_rare_fil, method="PCoA", "wunifrac")
 ##Warning message:
 ##In UniFrac(physeq, weighted = TRUE, ...) :
-  ##Randomly assigning root as -- 183686 -- in the phylogenetic tree in the data you provided.
+  ##Randomly assigning root as -- 196909 -- in the phylogenetic tree in the data you provided.
 plot_ordination(pre_proA_rare_fil, pre_proA_ord, color="Pre_ProA")
 
 pre_proB_rare_fil<-subset_samples(depression2017_1rare_fil, Pre_PostB %in% c("pre","B"))
 pre_proB_ord<-ordinate(pre_proB_rare_fil, method="PCoA", "wunifrac")
 ##Warning message:
 ##In UniFrac(physeq, weighted = TRUE, ...) :
-  ##Randomly assigning root as -- 188433 -- in the phylogenetic tree in the data you provided.
+  ##Randomly assigning root as -- 592170 -- in the phylogenetic tree in the data you provided.
 plot_ordination(pre_proB_rare_fil, pre_proB_ord, color="Pre_PostB")
 
 proA_B_rare_fil<-subset_samples(depression2017_1rare_fil, ProA_B %in% c("A","B"))
 proA_B_ord<-ordinate(proA_B_rare_fil, method="PCoA", "wunifrac")
 ##Warning message:
 ##In UniFrac(physeq, weighted = TRUE, ...) :
-  ##Randomly assigning root as -- 175438 -- in the phylogenetic tree in the data you provided.
+  ##Randomly assigning root as -- 580087 -- in the phylogenetic tree in the data you provided.
 plot_ordination(proA_B_rare_fil, proA_B_ord, color="ProA_B")
 
 
