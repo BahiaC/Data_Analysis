@@ -57,17 +57,18 @@ depression2017_1<-subset_samples(depression2017, !(Sample %in% c("P9.pre","P7.pr
 depression2017_1
 
 #filter out rare OTUs
-depression2017_fil<- filter_taxa(depression2017_1, function(x) sum(x)>=10 & sum(x>0)>0.1*length(x), TRUE)
+depression2017_fil<- filter_taxa(depression2017_1, function(x) sum(x)>=10 & sum(x>0)>0.25*length(x), TRUE)
 
-#2798 taxa and 138 samples
+#1277 taxa and 138 samples
 depression2017_fil
+sort(sample_sums(depression2017_fil))
 
-#Rarefy to 11175
-depression2017_rare<-rarefy_even_depth(depression2017_fil, sample.size=11175, rngseed=711, replace=FALSE, trimOTUs=TRUE)
+#Rarefy to 24748 - lose p4.pre
+depression2017_rare<-rarefy_even_depth(depression2017_fil, sample.size=24748, rngseed=711, replace=FALSE, trimOTUs=TRUE)
 ##6OTUs were removed because they are no longer present in any sample after random subsampling
 
-#11852 taxa and 132 samples (lost negative controls and two samples that only had max 15 seqs)
-depression2017_1rare
+#1277 taxa and 131 samples (lost negative controls and two samples that only had max 15 seqs)
+depression2017_rare
 
 ```
 
@@ -82,7 +83,7 @@ curve<-rarecurve(t_otu_depression2017, step=500, label=FALSE, xlim= c(0,50000), 
 axis(1, xaxp=c(0, 100000, 50))
 curve
 #place a line over the curve where you proppose to rarefy
-abline(v=11175, col="red")
+abline(v=247, col="red")
 
 ```
 
@@ -111,6 +112,7 @@ sample_data(practice2017_rare_controls2)$Disease_status
 
 #Alpha diversity analysis
 ```{r, alpha diversity}
+#participant (pre, post, con)
 
 #Once you have rarefied your data, explore the level of alpha diversity.  Uses phyloseq plot function which is built on ggplot2.  The x value will determine how samples are grouped along the x axis.
 plot_richness(depression2017_rare, x="Participant", measures=c("Observed", "Chao1","Shannon"))+
@@ -157,6 +159,11 @@ wilcox.test(Observed ~ Pre_PostB, data=depression_rare_richness)
 
 wilcox.test(Observed ~ ProA_B, data=depression_rare_richness)
 ##data:  Observed by ProA_B W = 203, p-value = 0.504
+
+##PRE_BDI_LEVELS - severe, mild moderate
+kruskal.test(Observed ~ PRE_BDI_LEVELS, data=depression_rare_richness)
+##Kruskal-Wallis chi-squared = 3.1845, df = 2, p-value = 0.2035
+
 ```
 
 
@@ -213,10 +220,19 @@ proA_B_ord<-ordinate(proA_B_rare_fil, method="PCoA", "wunifrac")
   ##Randomly assigning root as -- 580087 -- in the phylogenetic tree in the data you provided.
 plot_ordination(proA_B_rare_fil, proA_B_ord, color="ProA_B")
 
+#severity vs moderate vs mild
+pre_bdi_levels_rare_fil<-subset_samples(depression2017_1rare_fil, PRE_BDI_LEVELS %in% c("severe","moderate", "mild"))
+pre_bdi_levels_ord<-ordinate(pre_bdi_levels_rare_fil, method="PCoA", "wunifrac")
+##Warning message:
+##In UniFrac(physeq, weighted = TRUE, ...) :
+  ##Randomly assigning root as -- 844006 -- in the phylogenetic tree in the data you provided.
+plot_ordination(pre_bdi_levels_rare_fil, pre_bdi_levels_ord, color="PRE_BDI_LEVELS")
 
 ```
 
+```{r Trying to Fix R on QIIME}
+install.packages("optparse")
 
-
+```
 
 
