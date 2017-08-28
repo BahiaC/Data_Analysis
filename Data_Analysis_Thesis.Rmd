@@ -56,20 +56,19 @@ depression2017_1<-subset_samples(depression2017, !(Sample %in% c("P9.pre","P7.pr
 #18695 taxa and 138 samples
 depression2017_1
 
-#filter out rare OTUs
-depression2017_fil<- filter_taxa(depression2017_1, function(x) sum(x)>=10 & sum(x>0)>0.25*length(x), TRUE)
+#Rarefy to 28170 - lose p4.pre
+depression2017_rare<-rarefy_even_depth(depression2017_1, sample.size=28170, rngseed=711, replace=FALSE, trimOTUs=TRUE)
+##7 samples removed because they contained fewer reads than `sample.size`
+##2364OTUs were removed because they are no longer present in any sample after random subsampling
 
-#1277 taxa and 138 samples
-depression2017_fil
-sort(sample_sums(depression2017_fil))
-
-#Rarefy to 24748 - lose p4.pre
-depression2017_rare<-rarefy_even_depth(depression2017_fil, sample.size=24748, rngseed=711, replace=FALSE, trimOTUs=TRUE)
-##6OTUs were removed because they are no longer present in any sample after random subsampling
-
-#1277 taxa and 131 samples (lost negative controls and two samples that only had max 15 seqs)
+#16331 taxa and 131 samples 
 depression2017_rare
 
+#filter out rare OTUs
+depression2017_fil<- filter_taxa(depression2017_rare, function(x) sum(x)>=10 & sum(x>0)>0.25*length(x), TRUE)
+
+#938 taxa and 131 samples
+depression2017_fil
 ```
 
 
@@ -115,16 +114,16 @@ sample_data(practice2017_rare_controls2)$Disease_status
 #participant (pre, post, con)
 
 #Once you have rarefied your data, explore the level of alpha diversity.  Uses phyloseq plot function which is built on ggplot2.  The x value will determine how samples are grouped along the x axis.
-plot_richness(depression2017_rare, x="Participant", measures=c("Observed", "Chao1","Shannon"))+
+plot_richness(depression2017_fil, x="Participant", measures=c("Observed", "Chao1","Shannon"))+
   geom_boxplot()+xlab("Group")+ylab("Diversity")
 
 #Convert alpha diversity estimates to a data form we can use for statistical testing
-depression_rare_richness<-as.matrix(estimate_richness(depression2017_rare, measures=c("Observed","Chao1","Shannon")))
+depression_rare_richness<-as.matrix(estimate_richness(depression2017_fil, measures=c("Observed","Chao1","Shannon")))
 
 ##don't need this - row names are correct
 #row.names(practice2017_rare_richness)<-row.names(sample_data(practice2017_rare))
 
-depression_rare_richness<-cbind(depression_rare_richness,sample_data(depression2017_rare))
+depression_rare_richness<-cbind(depression_rare_richness,sample_data(depression2017_fil))
 
 depression_rare_richness
 
@@ -170,68 +169,90 @@ kruskal.test(Observed ~ PRE_BDI_LEVELS, data=depression_rare_richness)
 #Beta Diversity
 ```{r Beta Diversity}
 
-depression2017_wuf<-distance(depression2017_1rare_fil, "wunifrac", type="samples")
+depression2017_wuf<-distance(depression2017_fil, "wunifrac", type="samples")
 ##Warning message:
 ##In UniFrac(physeq, weighted = TRUE, ...) :
-  ##Randomly assigning root as -- 338222 -- in the phylogenetic tree in the data you provided.
+  ##Randomly assigning root as -- 531539 -- in the phylogenetic tree in the data you provided.
 
-depression2017_wuf_ord<-ordinate(depression2017_1rare_fil, method="PCoA", distance=depression2017_wuf)
-plot_ordination(depression2017_1rare_fil, depression2017_wuf_ord, type="samples",color="Participant")
+depression2017_wuf_ord<-ordinate(depression2017_fil, method="PCoA", distance=depression2017_wuf)
 
-pre_con_rare_fil<-subset_samples(depression2017_1rare_fil, Participant %in% c("Pre","Con"))
+plot_ordination(depression2017_fil, depression2017_wuf_ord, type="samples",color="Participant")
+
+pre_con_rare_fil<-subset_samples(depression2017_fil, Participant %in% c("Pre","Con"))
 pre_con_ord<-ordinate(pre_con_rare_fil, method="PCoA", "wunifrac")
-##Warning message:
-##In UniFrac(physeq, weighted = TRUE, ...) :
-  ##Randomly assigning root as -- 196083 -- in the phylogenetic tree in the data you provided.
+
 plot_ordination(pre_con_rare_fil,pre_con_ord, color="Participant")
 
-con_A_rare_fil<-subset_samples(depression2017_1rare_fil, Con_A %in% c("Con","A"))
+con_A_rare_fil<-subset_samples(depression2017_fil, Con_A %in% c("Con","A"))
 con_A_ord<-ordinate(con_A_rare_fil, method="PCoA", "wunifrac")
-##Warning message:
-##In UniFrac(physeq, weighted = TRUE, ...) :
-  ##Randomly assigning root as -- 4103317 -- in the phylogenetic tree in the data you provided.
+
 plot_ordination(con_A_rare_fil,con_A_ord, color="Con_A")
 
-con_B_rare_fil<-subset_samples(depression2017_1rare_fil, Con_B %in% c("Con","B"))
+con_B_rare_fil<-subset_samples(depression2017_fil, Con_B %in% c("Con","B"))
 con_B_ord<-ordinate(con_B_rare_fil, method="PCoA", "wunifrac")
-##Warning message:
-##In UniFrac(physeq, weighted = TRUE, ...) :
-  ##Randomly assigning root as -- 328573 -- in the phylogenetic tree in the data you provided.
+
 plot_ordination(con_B_rare_fil,con_B_ord, color="Con_B")
 
-pre_proA_rare_fil<-subset_samples(depression2017_1rare_fil, Pre_ProA %in% c("pre","A"))
+pre_proA_rare_fil<-subset_samples(depression2017_fil, Pre_ProA %in% c("pre","A"))
 pre_proA_ord<-ordinate(pre_proA_rare_fil, method="PCoA", "wunifrac")
-##Warning message:
-##In UniFrac(physeq, weighted = TRUE, ...) :
-  ##Randomly assigning root as -- 196909 -- in the phylogenetic tree in the data you provided.
+
 plot_ordination(pre_proA_rare_fil, pre_proA_ord, color="Pre_ProA")
 
-pre_proB_rare_fil<-subset_samples(depression2017_1rare_fil, Pre_PostB %in% c("pre","B"))
+pre_proB_rare_fil<-subset_samples(depression2017_fil, Pre_PostB %in% c("pre","B"))
 pre_proB_ord<-ordinate(pre_proB_rare_fil, method="PCoA", "wunifrac")
-##Warning message:
-##In UniFrac(physeq, weighted = TRUE, ...) :
-  ##Randomly assigning root as -- 592170 -- in the phylogenetic tree in the data you provided.
+
 plot_ordination(pre_proB_rare_fil, pre_proB_ord, color="Pre_PostB")
 
-proA_B_rare_fil<-subset_samples(depression2017_1rare_fil, ProA_B %in% c("A","B"))
+proA_B_rare_fil<-subset_samples(depression2017_fil, ProA_B %in% c("A","B"))
 proA_B_ord<-ordinate(proA_B_rare_fil, method="PCoA", "wunifrac")
-##Warning message:
-##In UniFrac(physeq, weighted = TRUE, ...) :
-  ##Randomly assigning root as -- 580087 -- in the phylogenetic tree in the data you provided.
+
 plot_ordination(proA_B_rare_fil, proA_B_ord, color="ProA_B")
 
 #severity vs moderate vs mild
-pre_bdi_levels_rare_fil<-subset_samples(depression2017_1rare_fil, PRE_BDI_LEVELS %in% c("severe","moderate", "mild"))
+pre_bdi_levels_rare_fil<-subset_samples(depression2017_fil, PRE_BDI_LEVELS %in% c("severe","moderate", "mild"))
 pre_bdi_levels_ord<-ordinate(pre_bdi_levels_rare_fil, method="PCoA", "wunifrac")
-##Warning message:
-##In UniFrac(physeq, weighted = TRUE, ...) :
-  ##Randomly assigning root as -- 844006 -- in the phylogenetic tree in the data you provided.
+
 plot_ordination(pre_bdi_levels_rare_fil, pre_bdi_levels_ord, color="PRE_BDI_LEVELS")
 
 ```
 
-```{r Trying to Fix R on QIIME}
-install.packages("optparse")
+
+```{r Plotting}
+
+#Transform an OTU table from counts to proportions between 0 and 1.
+depression2017_rel_1<-transform_sample_counts(depression2017_fil, function(x) x/sum(x))
+
+#I use the psmelt function to get the data into a form that ggplot likes, dplyr to filter that data I want, and ggplot to do the plotting
+#Melt data into a "long” form. I used the OTU table rarefied to 28170 and converted to relative abundance.
+depression_smelt<-psmelt(depression2017_rel_1)
+ ##Warning message:
+##In psmelt(depression2017_rel_1) : The sample variables: 
+##Sample
+ ##have been renamed to: 
+##sample_Sample
+##to avoid conflicts with special phyloseq plot attribute names.
+
+head(depression_smelt)
+
+
+#Look for Bacillus OTUs in data since it was lost from mock community.
+bacillus_otus<-depression_smelt %>% filter(Genus == "g__Bacillus") %>%
+  ggplot(aes(x=Sample,y=Abundance))+geom_bar(stat="identity")+facet_grid(.~Participant, scales="free")
+  
+fp_otus<-depression_smelt %>% filter(Species=="s__prausnitzii")
+
+ggplot(fp_otus, aes(x=Sample,y=Abundance))+geom_bar(stat="identity")+facet_grid(.~Participant, scales="free")
+
+ggplot(fp_otus, aes(x=Participant,y=Abundance))+geom_boxplot(stat = "boxplot")
+
+fp_otus %>% group_by(SampleID) %>% mutate(sum_abund=sum(Abundance)) %>%
+  distinct(SampleID, .keep_all=TRUE) %>%
+  ggplot(aes(x=Participant,y=Abundance))+geom_boxplot(stat = "boxplot")
+
+#Let's plot the overall taxa by group (average relative abundance per group) and colour by phyla
+#plot every sample by phyla, faceting into disease groups, 
+phyla_plot<-depression_smelt %>% group_by(SampleID,Phylum) %>%
+  mutate(abund=sum(Abundance)) %>% distinct(Phylum, .keep_all=TRUE) %>% select(SampleID, Phylum, Abundance, abund, Participant) %>% arrange(SampleID,Phylum)
 
 ```
 
