@@ -222,9 +222,13 @@ plot_ordination(pre_bdi_levels_rare_fil, pre_bdi_levels_ord, color="PRE_BDI_LEVE
 #Transform an OTU table from counts to proportions between 0 and 1.
 depression2017_rel_1<-transform_sample_counts(depression2017_fil, function(x) x/sum(x))
 
+depression2017_rel_2<-transform_sample_counts(depression2017_rare, function(x) x/sum(x))
+
 #I use the psmelt function to get the data into a form that ggplot likes, dplyr to filter that data I want, and ggplot to do the plotting
 #Melt data into a "long” form. I used the OTU table rarefied to 28170 and converted to relative abundance.
 depression_smelt<-psmelt(depression2017_rel_1)
+
+depression_smelt_rare<-psmelt(depression2017_rel_2)
  ##Warning message:
 ##In psmelt(depression2017_rel_1) : The sample variables: 
 ##Sample
@@ -249,10 +253,44 @@ fp_otus %>% group_by(SampleID) %>% mutate(sum_abund=sum(Abundance)) %>%
   distinct(SampleID, .keep_all=TRUE) %>%
   ggplot(aes(x=Participant,y=Abundance))+geom_boxplot(stat = "boxplot")
 
+f_otus<-depression_smelt %>% filter(Genus=="g__Faecalibacterium")
+
+ggplot(f_otus, aes(x=Species, y=Abundance, fill=Species))+geom_bar(stat="identity")
+
 #Let's plot the overall taxa by group (average relative abundance per group) and colour by phyla
 #plot every sample by phyla, faceting into disease groups, 
-phyla_plot<-depression_smelt %>% group_by(SampleID,Phylum) %>%
-  mutate(abund=sum(Abundance)) %>% distinct(Phylum, .keep_all=TRUE) %>% select(SampleID, Phylum, Abundance, abund, Participant) %>% arrange(SampleID,Phylum)
+phyla_plot<-depression_smelt %>% group_by(sample_Sample,Phylum) %>%
+  mutate(abund=sum(Abundance)) %>% distinct(Phylum, .keep_all=TRUE) %>% select(sample_Sample, Phylum, Abundance, abund, Participant) %>% arrange(sample_Sample,Phylum)
+
+phyla_plot_rare<-depression_smelt_rare %>% group_by(sample_Sample,Phylum) %>%
+  mutate(abund=sum(Abundance)) %>% distinct(Phylum, .keep_all=TRUE) %>% select(sample_Sample, Phylum, Abundance, abund, Participant) %>% arrange(sample_Sample,Phylum)
+
+ggplot(phyla_plot_rare, aes(x=sample_Sample, y=abund, fill=Phylum))+geom_bar(stat="identity") + facet_grid(PostA_B~Participant, scales="free")
+
+probiotics<- depression_smelt_rare %>% filter(Genus %in% c("g__Bifidobacterium","g__Lactobacillus", "g__Lacotococcus")) %>% group_by(sample_Sample, Genus) %>% mutate(sum_abund= sum(Abundance)) %>% select(OTU,Sample,Abundance,Participant,ProA_B,Pre_ProA,Pre_PostB,Genus)
+ 
+proA<-probiotics %>% filter(Pre_ProA %in% c("A","pre"))
+
+kruskal.test(Abundance ~ Pre_ProA, proA)
+
+proB<-probiotics %>% filter(Pre_PostB %in% c("B","pre"))
+kruskal.test(Abundance ~ Pre_PostB, proB)   
+
+ggplot(probiotics, aes(x=sample_Sample, y=Abundance, fill=Genus))+geom_bar(stat="identity") + facet_grid(.~ProA_B, scales="free")
+
+ggplot(probiotics, aes(x=ProA_B, y=sum_abund, fill=Genus))+geom_boxplot() 
+                                              
+roseburia<-depression_smelt_rare %>% filter(OTU=="518438") %>% arrange(desc(Abundance))
+
+depression_smelt_rare_counts<-psmelt(depression2017_rare)
+roseburia_counts<-depression_smelt_rare_counts %>% filter(OTU=="518438") %>% arrange(desc(Abundance))
+
+head(roseburia)
+ggplot(roseburia_counts, aes(x=Abundance, y=CogReact.Total.Score))+geom_point()
+
+lacno_counts<-depression_smelt_rare_counts %>% filter(OTU=="205148") %>% arrange(desc(Abundance)) %>% filter(Participant!="Con")
+
+ggplot(lacno_counts, aes(x=Abundance, y=CogReact.Total.Score))+geom_point()+geom_smooth(method=lm)
 
 ```
 
