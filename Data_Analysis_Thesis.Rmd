@@ -267,14 +267,23 @@ phyla_plot_rare<-depression_smelt_rare %>% group_by(sample_Sample,Phylum) %>%
 
 ggplot(phyla_plot_rare, aes(x=sample_Sample, y=abund, fill=Phylum))+geom_bar(stat="identity") + facet_grid(PostA_B~Participant, scales="free")
 
-probiotics<- depression_smelt_rare %>% filter(Genus %in% c("g__Bifidobacterium","g__Lactobacillus", "g__Lacotococcus")) %>% group_by(sample_Sample, Genus) %>% mutate(sum_abund= sum(Abundance)) %>% select(OTU,Sample,Abundance,Participant,ProA_B,Pre_ProA,Pre_PostB,Genus)
+probiotics<- depression_smelt_rare %>% filter(Genus %in% c("g__Bifidobacterium","g__Lactobacillus", "g__Lacotococcus")) %>% group_by(sample_Sample, Genus) %>% mutate(sum_abund= sum(Abundance)) %>% select(OTU,Sample,Abundance,Participant,ProA_B,Pre_ProA,Pre_PostB,Genus,sum_abund) %>%
+  filter(Participant %in% c("Pre","Post"))
+probiotics$Participant<-factor(probiotics$Participant, levels=c("Pre","Post"))
+probiotics %>% filter(Pre_ProA%in% c("A","pre")) %>%
+  ggplot(aes(x=sample_Sample,y=sum_abund, fill=Genus))+geom_bar(stat="identity")+facet_grid(.~Participant)+labs(title="Group A pre and post", y= "% relative abundance", x="Sample")+
+  theme(axis.text.x = element_text(angle=90, size=5))
+
+probiotics %>% filter(Pre_PostB%in% c("B","pre")) %>%
+  ggplot(aes(x=sample_Sample,y=sum_abund, fill=Genus))+geom_bar(stat="identity")+facet_grid(.~Participant)+labs(title="Group B pre and post", y= "% relative abundance", x="Sample")+
+  theme(axis.text.x = element_text(angle=90, size=5))
  
 proA<-probiotics %>% filter(Pre_ProA %in% c("A","pre"))
 
 kruskal.test(Abundance ~ Pre_ProA, proA)
 
 proB<-probiotics %>% filter(Pre_PostB %in% c("B","pre"))
-kruskal.test(Abundance ~ Pre_PostB, proB)   
+kruskal.test(Abundance ~ Pre_PostB, proB)
 
 ggplot(probiotics, aes(x=sample_Sample, y=Abundance, fill=Genus))+geom_bar(stat="identity") + facet_grid(.~ProA_B, scales="free")
 
@@ -294,4 +303,8 @@ ggplot(lacno_counts, aes(x=Abundance, y=CogReact.Total.Score))+geom_point()+geom
 
 ```
 
+
+```{r }
+
+```
 
