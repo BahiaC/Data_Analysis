@@ -292,6 +292,7 @@ ggplot(probiotics, aes(x=ProA_B, y=sum_abund, fill=Genus))+geom_boxplot()
 roseburia<-depression_smelt_rare %>% filter(OTU=="518438") %>% arrange(desc(Abundance))
 
 depression_smelt_rare_counts<-psmelt(depression2017_rare)
+
 roseburia_counts<-depression_smelt_rare_counts %>% filter(OTU=="518438") %>% arrange(desc(Abundance))
 
 head(roseburia)
@@ -301,6 +302,21 @@ lacno_counts<-depression_smelt_rare_counts %>% filter(OTU=="205148") %>% arrange
 
 ggplot(lacno_counts, aes(x=Abundance, y=CogReact.Total.Score))+geom_point()+geom_smooth(method=lm)
 
+
+
+roseburia_counts_DepDass<-depression_smelt_rare_counts %>% filter(OTU=="518438") %>% arrange(desc(Abundance)) %>% filter(Participant!="Post")
+
+head(roseburia_counts_DepDass)
+tail(roseburia_counts_DepDass)
+
+ggplot(roseburia_counts_DepDass, aes(x=Abundance, y=DEP_DASS))+geom_point() + labs(title="Dep_Dass Pre vs. Con Rosburia 518438")+geom_smooth(method=lm)
+
+ruminococcus_counts_DepDass<-depression_smelt_rare_counts %>% filter(OTU=="4341886") %>% arrange(desc(Abundance)) %>% filter(Participant!="Post")
+ggplot(ruminococcus_counts_DepDass, aes(x=Abundance, y=DEP_DASS))+geom_point() + labs(title="Dep_Dass Pre vs. Con Ruminococcus 4341886")+geom_smooth(method=lm)
+
+
+clostridiales_counts_cogn<-depression_smelt_rare_counts %>% filter(OTU=="358594") %>% arrange(desc(Abundance)) %>% filter(Participant!="Post")
+ggplot(clostridiales_counts_cogn, aes(x=Abundance, y=CogReact.Total.Score))+geom_point() + labs(title="CogReact Pre vs. Con Clostridiales 358594")+geom_smooth(method=lm)
 ```
 
 
