@@ -64,6 +64,7 @@ depression2017_rare<-rarefy_even_depth(depression2017_1, sample.size=28170, rngs
 #16331 taxa and 131 samples 
 depression2017_rare
 
+
 #filter out rare OTUs
 depression2017_fil<- filter_taxa(depression2017_rare, function(x) sum(x)>=10 & sum(x>0)>0.25*length(x), TRUE)
 
@@ -224,11 +225,14 @@ depression2017_rel_1<-transform_sample_counts(depression2017_fil, function(x) x/
 
 depression2017_rel_2<-transform_sample_counts(depression2017_rare, function(x) x/sum(x))
 
+
+depression2017_rel<-transform_sample_counts(depression2017_1, function(x) x/sum(x))
+                                            
 #I use the psmelt function to get the data into a form that ggplot likes, dplyr to filter that data I want, and ggplot to do the plotting
 #Melt data into a "long” form. I used the OTU table rarefied to 28170 and converted to relative abundance.
 depression_smelt<-psmelt(depression2017_rel_1)
 
-depression_smelt_rare<-psmelt(depression2017_rel_2)
+depression_smelt_1<-psmelt(depression2017_rel)
  ##Warning message:
 ##In psmelt(depression2017_rel_1) : The sample variables: 
 ##Sample
@@ -317,10 +321,43 @@ ggplot(ruminococcus_counts_DepDass, aes(x=Abundance, y=DEP_DASS))+geom_point() +
 
 clostridiales_counts_cogn<-depression_smelt_rare_counts %>% filter(OTU=="358594") %>% arrange(desc(Abundance)) %>% filter(Participant!="Post")
 ggplot(clostridiales_counts_cogn, aes(x=Abundance, y=CogReact.Total.Score))+geom_point() + labs(title="CogReact Pre vs. Con Clostridiales 358594")+geom_smooth(method=lm)
+
+Ruminococcaceae_counts_cogn<-depression_smelt_rare_counts %>% filter(OTU=="295748")
+
+ggplot(Ruminococcaceae_counts_cogn, aes (x=PRE_BDI_LEVELS, y=Abundance))+geom_boxplot()+geom_point()
+
+Top10OTUs<-names(sort(taxa_sums(depression2017_rare),TRUE))[1:10]
+top_10<-depression_smelt_rare %>% filter(OTU %in% Top10OTUs)
+ggplot(top_10, aes(x=OTU, y=Abundance, fill=Participant))+geom_bar(stat="identity", position="dodge")
+
+Top100OTUs<-names(sort(taxa_sums(depression2017_rare),TRUE))[1:100]
+top_100<-depression_smelt_rare_counts %>% filter(OTU %in% Top100OTUs)
+
+ggplot(top_10, aes(x=OTU, y=Abundance, fill=Participant))+geom_boxplot()
+
 ```
 
 
-```{r }
+```{r Writing to a textfile}
+write.table((depression_smelt_1 %>% distinct(OTU)), file="all_otus1.txt", sep="\t")
+```
+
+```{r}
+
+Top10OTUs<-names(sort(taxa_sums(depression2017_rare),TRUE))[1:10]
+
+top_100<-depression_smelt_rare %>% filter(OTU %in% Top10OTUs)
+
+top_100_PreCon<-top_100 %>% filter(Participant!="Post")
+
+top_100_gnavus<-top_100_PreCon %>% filter(OTU=="360015")
+
+ggplot(top_100_gnavus, aes(x=OTU, y=Abundance, fill=Participant)) %>% +geom_bar(stat="identity", position="dodge")
+
+ggplot(top_100_gnavus, aes(x=OTU, y=Abundance, fill=Participant)) %>% +geom_boxplot()
+
+
+ggplot(top_100_gnavus, aes(x=Abundance, y=DEP_DASS))+geom_point(aes(colour=Participant)) + labs(title="DEP_DASS correlation with R. gnavus 360015")+geom_smooth(method=lm)
 
 ```
 
