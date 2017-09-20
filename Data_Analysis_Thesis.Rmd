@@ -182,38 +182,68 @@ plot_ordination(depression2017_fil, depression2017_wuf_ord, type="samples",color
 pre_con_rare_fil<-subset_samples(depression2017_fil, Participant %in% c("Pre","Con"))
 pre_con_ord<-ordinate(pre_con_rare_fil, method="PCoA", "wunifrac")
 
-plot_ordination(pre_con_rare_fil,pre_con_ord, color="Participant")
+plot_ordination(pre_con_rare_fil,pre_con_ord, color="Participant") + stat_ellipse()
+
+dep_con_dist<-distance(pre_con_rare_fil, "wunifrac")
+
+adonis(dep_con_dist ~ Dep_Con + Extraction_batch + PCR_batch, data=data.frame(sample_data(pre_con_rare_fil)))
 
 con_A_rare_fil<-subset_samples(depression2017_fil, Con_A %in% c("Con","A"))
 con_A_ord<-ordinate(con_A_rare_fil, method="PCoA", "wunifrac")
 
 plot_ordination(con_A_rare_fil,con_A_ord, color="Con_A")
 
+con_A_dist<-distance(con_A_rare_fil, "wunifrac")
+
+adonis(con_A_dist ~ Con_A + Extraction_batch + PCR_batch, data=data.frame(sample_data(con_A_rare_fil)))
+
+
 con_B_rare_fil<-subset_samples(depression2017_fil, Con_B %in% c("Con","B"))
 con_B_ord<-ordinate(con_B_rare_fil, method="PCoA", "wunifrac")
 
 plot_ordination(con_B_rare_fil,con_B_ord, color="Con_B")
+
+con_B_dist<-distance(con_B_rare_fil, "wunifrac")
+
+adonis(con_B_dist ~ Con_B + Extraction_batch + PCR_batch, data=data.frame(sample_data(con_B_rare_fil)))
 
 pre_proA_rare_fil<-subset_samples(depression2017_fil, Pre_ProA %in% c("pre","A"))
 pre_proA_ord<-ordinate(pre_proA_rare_fil, method="PCoA", "wunifrac")
 
 plot_ordination(pre_proA_rare_fil, pre_proA_ord, color="Pre_ProA")
 
+pre_proA_dist<-distance(pre_proA_rare_fil, "wunifrac")
+
+adonis(pre_proA_dist ~ Pre_ProA + Extraction_batch + PCR_batch, data=data.frame(sample_data(pre_proA_rare_fil)))
+
 pre_proB_rare_fil<-subset_samples(depression2017_fil, Pre_PostB %in% c("pre","B"))
 pre_proB_ord<-ordinate(pre_proB_rare_fil, method="PCoA", "wunifrac")
 
 plot_ordination(pre_proB_rare_fil, pre_proB_ord, color="Pre_PostB")
+
+pre_proB_dist<-distance(pre_proB_rare_fil, "wunifrac")
+
+adonis(pre_proB_dist ~ Pre_PostB + Extraction_batch + PCR_batch, data=data.frame(sample_data(pre_proB_rare_fil)))
 
 proA_B_rare_fil<-subset_samples(depression2017_fil, ProA_B %in% c("A","B"))
 proA_B_ord<-ordinate(proA_B_rare_fil, method="PCoA", "wunifrac")
 
 plot_ordination(proA_B_rare_fil, proA_B_ord, color="ProA_B")
 
+proA_B_dist<-distance(proA_B_rare_fil, "wunifrac")
+
+adonis(proA_B_dist ~ ProA_B + Extraction_batch + PCR_batch, data=data.frame(sample_data(proA_B_rare_fil)))
+
+
 #severity vs moderate vs mild
 pre_bdi_levels_rare_fil<-subset_samples(depression2017_fil, PRE_BDI_LEVELS %in% c("severe","moderate", "mild"))
 pre_bdi_levels_ord<-ordinate(pre_bdi_levels_rare_fil, method="PCoA", "wunifrac")
 
 plot_ordination(pre_bdi_levels_rare_fil, pre_bdi_levels_ord, color="PRE_BDI_LEVELS")
+
+pre_bdi_dist<-distance(pre_bdi_levels_rare_fil, "wunifrac")
+
+adonis(pre_bdi_dist ~ PRE_BDI_LEVELS + Extraction_batch + PCR_batch, data=data.frame(sample_data(pre_bdi_levels_rare_fil)))
 
 ```
 
