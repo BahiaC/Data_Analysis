@@ -79,11 +79,13 @@ depression2017_fil
 #Create a rarefaction curve to find the appropraite place for rarefying your data. Uses vegan for calculating the curve, and base R for plotting. 
 #Plot rarecurve
 t_otu_depression2017<-as.matrix(t(otu_table(depression2017_1)))
-curve<-rarecurve(t_otu_depression2017, step=500, label=FALSE, xlim= c(0,50000), ylim=c(0,2500), ylab = "OTU Count", xaxt="n")
-axis(1, xaxp=c(0, 100000, 50))
-curve
+curve<-rarecurve(t_otu_depression2017, step=500, label=FALSE, xlim=c(0,50000), ylim=c(0,2000), ylab = "OTU Count", xaxt="n")
+
+label(title="Rarefaction Curve of All Microbiome Samples")
+
+axis(1)
 #place a line over the curve where you proppose to rarefy
-abline(v=247, col="red")
+abline(v=28170, col="red")
 
 ```
 
@@ -115,8 +117,23 @@ sample_data(practice2017_rare_controls2)$Disease_status
 #participant (pre, post, con)
 
 #Once you have rarefied your data, explore the level of alpha diversity.  Uses phyloseq plot function which is built on ggplot2.  The x value will determine how samples are grouped along the x axis.
-plot_richness(depression2017_fil, x="Participant", measures=c("Observed", "Chao1","Shannon"))+
-  geom_boxplot()+xlab("Group")+ylab("Diversity")
+plot_richness(depression2017_fil, x="Participant", measures=c("Observed", "Chao1","Shannon"))+ geom_boxplot()+xlab("Group")+ylab("Diversity")
+
+dep_con_richness<-subset_samples(depression2017_fil, Dep_Con %in% c("Dep", "Con"))
+
+#alpha diversity richness pre and con graph 
+plot_richness(dep_con_richness, x="Dep_Con", measures=c("Observed", "Chao1","Shannon"))+ geom_boxplot()+xlab("Group")+ylab("Diversity")+labs(title="Richness of Pre and Con Samples")
+
+
+allocation_groups_richness<-subset_samples(depression2017_fil, Allocation_Groups %in% c("PreA", "PreB", "PostA", "PostB"))
+plot_richness(allocation_groups_richness, x="Allocation_Groups", measures=c("Observed", "Chao1","Shannon"))+ geom_boxplot()+xlab("Group")+ylab("Diversity")
+
+##two graphs below richness for pre and post samples allocation a and b
+allocation_a_richness<-subset_samples(depression2017_fil, Allocation_Groups %in% c("PreA", "PostA"))
+plot_richness(allocation_a_richness, x="Allocation_Groups", measures=c("Observed", "Chao1","Shannon"))+ geom_boxplot()+xlab("Group")+ylab("Diversity")
+
+allocation_b_richness<-subset_samples(depression2017_fil, Allocation_Groups %in% c("PreB", "PostB"))
+plot_richness(allocation_b_richness, x="Allocation_Groups", measures=c("Observed", "Chao1","Shannon"))+ geom_boxplot()+xlab("Group")+ylab("Diversity")
 
 #Convert alpha diversity estimates to a data form we can use for statistical testing
 depression_rare_richness<-as.matrix(estimate_richness(depression2017_fil, measures=c("Observed","Chao1","Shannon")))
@@ -182,7 +199,9 @@ plot_ordination(depression2017_fil, depression2017_wuf_ord, type="samples",color
 pre_con_rare_fil<-subset_samples(depression2017_fil, Participant %in% c("Pre","Con"))
 pre_con_ord<-ordinate(pre_con_rare_fil, method="PCoA", "wunifrac")
 
-plot_ordination(pre_con_rare_fil,pre_con_ord, color="Participant") + stat_ellipse()
+
+#beta-diversity pre and con graph 
+plot_ordination(pre_con_rare_fil,pre_con_ord, color="Participant") + stat_ellipse()+labs(title="Weighted Unifrac PCoA Pre vs Con")
 
 dep_con_dist<-distance(pre_con_rare_fil, "wunifrac")
 
@@ -235,6 +254,9 @@ proA_B_dist<-distance(proA_B_rare_fil, "wunifrac")
 adonis(proA_B_dist ~ ProA_B + Extraction_batch + PCR_batch, data=data.frame(sample_data(proA_B_rare_fil)))
 
 
+
+
+
 #severity vs moderate vs mild
 pre_bdi_levels_rare_fil<-subset_samples(depression2017_fil, PRE_BDI_LEVELS %in% c("severe","moderate", "mild"))
 pre_bdi_levels_ord<-ordinate(pre_bdi_levels_rare_fil, method="PCoA", "wunifrac")
@@ -245,7 +267,28 @@ pre_bdi_dist<-distance(pre_bdi_levels_rare_fil, "wunifrac")
 
 adonis(pre_bdi_dist ~ PRE_BDI_LEVELS + Extraction_batch + PCR_batch, data=data.frame(sample_data(pre_bdi_levels_rare_fil)))
 
+allocation_all_fil<-subset_samples(depression2017_fil, Allocation_All %in% c("PreA", "PreB", "PostA", "PostB", "Con"))
+allocation_all_ord<-ordinate(allocation_all_fil, method="PCoA", "wunifrac")
+plot_ordination(allocation_all_fil, allocation_all_ord, color="Allocation_All")+stat_ellipse()
+
+#beta-diversity pre and post graph 
+allocation_groups<-subset_samples(depression2017_fil, Allocation_Groups %in% c("PreA", "PreB", "PostA", "PostB"))
+allocation_groups_ord<-ordinate(allocation_groups, method="PCoA", "wunifrac")
+plot_ordination(allocation_groups, allocation_groups_ord, color="Allocation_Groups")+stat_ellipse()+facet_wrap(~Allocation)+labs(title="Weighted UniFrac PCoA Allocation A and B; Pre and Post")
+
+allocation_a<-subset_samples(depression2017_fil, Allocation_Groups %in% c("PreA","PostA"))
+allocation_a_ord<-ordinate(allocation_a, method="PCoA", "wunifrac")
+plot_ordination(allocation_a, allocation_a_ord, color="Allocation_Groups")+stat_ellipse()
+
+allocation_b<-subset_samples(depression2017_fil, Allocation_Groups %in% c("PreB","PostB"))
+allocation_b_ord<-ordinate(allocation_b, method="PCoA", "wunifrac")
+plot_ordination(allocation_b, allocation_b_ord, color="Allocation_Groups")+stat_ellipse()
+
+
 ```
+
+
+
 
 
 ```{r Plotting}
@@ -407,6 +450,7 @@ ggplot(top_100_gnavus, aes(x=OTU, y=Abundance, fill=PRE_BDI_LEVELS)) %>% +geom_b
 
 ggplot(top_100_gnavus, aes(x=OTU, y=Abundance, fill=PRE_BDI_LEVELS)) %>% +geom_boxplot()
 
+ggplot(top_100, aes(x=Phylum, y=Abundance, fill=Participant))+geom_bar(stat="identity")
 
 ggplot(top_100_gnavus, aes(x=Abundance, y=DEP_DASS, label=sample_Sample))+geom_point(aes(colour=PRE_BDI_LEVELS)) + labs(title="DEP_DASS correlation with R. gnavus 360015")+geom_smooth(method=lm)
 
