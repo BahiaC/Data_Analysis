@@ -378,15 +378,11 @@ w
 probiotics_bif<- depression_smelt2 %>% filter(Genus %in% c("g__Bifidobacterium")) %>% group_by(Sample, Genus) %>% mutate(sum_abund= sum(Abundance)) %>% select(OTU,Sample,Abundance,Participant,Participant_Group,ProA_B,Pre_ProA ,Pre_PostB,Genus,sum_abund, Allocation_All, Allocation_Groups) %>% filter(Participant %in% c("Pre","Post")) %>% filter(Pre_ProA!="NA")%>% filter(Participant_Group!="P46")
 
 
-
 ggplot(probiotics_bif, aes(x=Participant_Group, y=Abundance, fill=Allocation_Groups)) + geom_bar(stat="identity", position="dodge")+labs(title="Bifidobacterium Pre and Post Probiotic Treatment", y= "Abundance", x="Sample")+theme(axis.text.x = element_text(angle=90, size=10))
 
 probiotics_bif$Allocation_Groups<-factor(probiotics_bif$Allocation_Groups, levels = c("PreA", "PostA"))
 
 ggplot(probiotics_bif, aes(x=Participant_Group, y=Abundance, fill=factor(Allocation_Groups))) + geom_bar(stat="identity", position="dodge")+labs(title="Bifidobacterium Pre and Post Probiotic Treatment", y= "Abundance", x="Sample", fill="Pre vs Post")+theme(axis.text.x = element_text(angle=90, size=10))
-
-
-
 
 probiotics$Participant<-factor(probiotics$Participant, levels=c("Pre","Post"))
 
@@ -425,7 +421,6 @@ lacno_counts<-depression_smelt_rare_counts %>% filter(OTU=="205148") %>% arrange
 ggplot(lacno_counts, aes(x=Abundance, y=CogReact.Total.Score))+geom_point()+geom_smooth(method=lm)
 
 
-
 roseburia_counts_DepDass<-depression_smelt_rare_counts %>% filter(OTU=="518438") %>% arrange(desc(Abundance)) %>% filter(Participant!="Post")
 
 roseburia_DepDass<-depression_smelt_rare %>% filter(OTU=="518438") %>% arrange(desc(Abundance)) %>% filter(Participant!="Post")
@@ -433,7 +428,7 @@ roseburia_DepDass<-depression_smelt_rare %>% filter(OTU=="518438") %>% arrange(d
 head(roseburia_counts_DepDass)
 tail(roseburia_counts_DepDass)
 
-ggplot(roseburia_counts_DepDass, aes(x=Abundance, y=DEP_DASS))+geom_point(aes(colour=Participant)) + labs(title="DEP_Dass Correlation to Rosburia 518438 in Baseline \nDepressed and Control Samples")+geom_smooth(method=lm)
+ggplot(roseburia_counts_DepDass, aes(x=Abundance, y=DEP_DASS))+geom_point(aes(colour=Participant)) + labs(title="DEP_Dass Correlation to Rosburia 518438 in Baseline \nDepressed and Control Samples")+geom_smooth(method=lm)+scale_colour_manual(values=c("green","red", labels=c("Control", "Baseline Depressed")))
 
 
 ruminococcus_counts_DepDass<-depression_smelt_rare_counts %>% filter(OTU=="4341886") %>% arrange(desc(Abundance)) %>% filter(Participant!="Post")
@@ -443,7 +438,7 @@ ggplot(ruminococcus_counts_DepDass, aes(x=Abundance, y=DEP_DASS))+geom_point() +
 clostridiales_counts_cogn<-depression_smelt_rare_counts %>% filter(OTU=="358594") %>% arrange(desc(Abundance)) %>% filter(Participant!="Post")
 ggplot(clostridiales_counts_cogn, aes(x=Abundance, y=CogReact.Total.Score))+geom_point() + labs(title="CogReact Pre vs. Con Clostridiales 358594")+geom_smooth(method=lm)
 
-Ruminococcaceae_counts_cogn<-depression_smelt_rare_counts %>% filter(OTU=="295748")
+Ruminococcaceae_counts_cogn<-depression_smelt_rare_counts %>% filter(OTU=="295748")+filter(PRE_BDI_LEVELS%in% c("mild", "severe"))
 
 ggplot(Ruminococcaceae_counts_cogn, aes (x=PRE_BDI_LEVELS, y=Abundance))+geom_boxplot()+geom_point()
 
@@ -480,13 +475,82 @@ ggplot(top_100_gnavus, aes(x=OTU, y=Abundance, fill=PRE_BDI_LEVELS)) %>% +geom_b
 
 ggplot(top_100, aes(x=Phylum, y=Abundance, fill=Participant))+geom_bar(stat="identity")
 
-ggplot(top_100_gnavus, aes(x=Abundance, y=DEP_DASS))+geom_point(aes(colour=PRE_BDI_LEVELS)) + labs(title="DEP_DASS correlation with R. gnavus 360015", colour="BDI Severity Levels")+geom_smooth(method=lm)+scale_colour_manual(values=c("darkgray","blue","yellow","red"), labels=c("Control", "Mild", "Moderate", "Severe"))
+top_100_gnavus$PRE_BDI_LEVELS<-factor(top_100_gnavus$PRE_BDI_LEVELS, levels=c("mild", "moderate", "severe", "Con"))
+
+ggplot(top_100_gnavus, aes(x=Abundance, y=DEP_DASS))+geom_point(aes(colour=PRE_BDI_LEVELS)) + labs(title="DEP_DASS correlation with R. gnavus 360015", colour="BDI Severity Levels")+geom_smooth(method=lm)+scale_colour_manual(values=c("darkgray","blue","yellow","red"), labels=c("Mild", "Moderate", "Severe", "Control"))
 
 ggplot(top_100_gnavus, aes(x=Abundance, y=DEP_DASS))+geom_point()
 
 depression_smelt_rare_counts %>% mutate(meanAbund= mean(Abundance)) %>% filter(Family=="f__Ruminococcaceae") %>% filter(PRE_BDI_LEVELS!=("NA")) %>% filter(PRE_BDI_LEVELS!=("moderate")) %>%ggplot(aes(x=PRE_BDI_LEVELS, y=meanAbund, fill=PRE_BDI_LEVELS))+ geom_boxplot()+labs(title="Mean Abundance of f_Ruminococcaceae Severe & Mild BDI")
 
 depression_smelt_rare_counts %>% mutate(meanAbund= mean(Abundance)) %>% filter(OTU=="295748") %>% filter(PRE_BDI_LEVELS!=("NA")) %>% filter(PRE_BDI_LEVELS!=("moderate")) %>%ggplot(aes(x=PRE_BDI_LEVELS, y=Abundance))+ geom_point()+labs(title="Abundance of OTU 295748 f_Ruminococcaceae in Severe & Mild \nBDI Baseline Depressed Samples", x="BDI Severity Level", fill="BDI Severity Level")
+
+
+```
+
+```{r Results Figures}
+
+##Mock Community
+
+##Rarefaction Curve
+t_otu_depression2017<-as.matrix(t(otu_table(depression2017_1)))
+curve<-rarecurve(t_otu_depression2017, step=500, label=FALSE, xlim=c(0,50000), ylim=c(0,2000), ylab = "OTU Count", xaxt="n")
+
+label(title="Rarefaction Curve of All Microbiome Samples")
+axis(1)
+abline(v=28170, col="red")
+
+
+##Phyla Present PreCon (After rare filtering)
+
+phyla_plot<-depression_smelt %>% filter(Participant %in% c("Pre", "Con"))
+
+ggplot(phyla_plot, aes(x=Phylum, y=Abundance, colour=Phylum, position="dodge"))+geom_bar(stat="identity")+facet_grid(.~Participant)+scale_colour_manual(values=c("red2", "orange1", "yellow1", "limegreen", "deepskyblue2","purple1", "hotpink"), labels=c("Actinobacteria", "Bacteroidetes", "Firmicutes", "Proteobacteria", "Synergistetes", "TM7", "Verrucomicrobia"))
+
+
+##PreCon AlphaDiv
+plot_richness(dep_con_richness, x="Dep_Con", measures=c("Observed", "Chao1","Shannon"))+ geom_boxplot()+xlab("Group")+ylab("Diversity")+labs(title="Diversity of Baseline Depressed Samples and Healthy Controls")+scale_x_discrete(limits=c("Dep", "Con"))
+
+##PreCon BetaDiv
+plot_ordination(pre_con_rare_fil,pre_con_ord, color="Participant") + stat_ellipse()+labs(title="Weighted Unifrac PCoA Baseline Depressed vs Controls")+scale_color_manual(values=c("limegreen", "red2"), labels=c("Controls", "Baseline Depressed")) 
+
+##PreCon DepDass Roseburia 
+depdass_roseburia<-ggplot(roseburia_counts_DepDass, aes(x=Abundance, y=DEP_DASS))+geom_point(aes(color=Participant)) + labs(title="DEP_Dass Correlation to Rosburia 518438 in Baseline \nDepressed and Control Samples")+geom_smooth(method=lm)
+
+depdass_roseburia + scale_colour_manual(values=c("green","red"), labels=c("Controls", "Baseline Depressed"))
+
+##SevereMild Ruminoc
+depression_smelt_rare_counts %>% mutate(meanAbund= mean(Abundance)) %>% filter(OTU=="295748") %>% filter(PRE_BDI_LEVELS!=("NA")) %>% filter(PRE_BDI_LEVELS!=("moderate")) %>%ggplot(aes(x=PRE_BDI_LEVELS, y=Abundance))+ geom_point()+labs(title="Abundance of OTU 295748 f_Ruminococcaceae in Severe &\nMild BDI Baseline Depressed Samples", x="BDI Severity Level", fill="BDI Severity Level")+geom_boxplot()+scale_x_discrete(labels=c("Mild", "Severe"))
+
+
+##PrePost AlphaDiv
+allocation_a_richness<-subset_samples(depression2017_fil, Allocation_Groups %in% c("PreA", "PostA"))
+plot_richness(allocation_a_richness, x="Allocation_Groups", measures=c("Observed", "Chao1","Shannon"))+ geom_boxplot()+xlab("Group")+ylab("Diversity")+scale_x_discrete(limits=c("PreA", "PostA"))+labs(title="Pre and Post Depressed Particpant Samples Treated with Probiotics")
+
+allocation_b_richness<-subset_samples(depression2017_fil, Allocation_Groups %in% c("PreB", "PostB"))
+plot_richness(allocation_b_richness, x="Allocation_Groups", measures=c("Observed", "Chao1","Shannon"))+ geom_boxplot()+xlab("Group")+ylab("Diversity")+scale_x_discrete(limits=c("PreB", "PostB"))+labs(title="Pre and Post Depressed Particpant Samples Treated with Placebo")
+
+##PrePost BetaDiv (line 287)
+plot_ordination(allocation_groups, allocation_groups_ord, color="Allocation_Groups")+stat_ellipse()+facet_wrap(~Allocation)+labs(title="Weighted UniFrac PCoA Allocation A and B; Pre and Post")
+
+allocation_a<-subset_samples(depression2017_fil, Allocation_Groups %in% c("PreA","PostA"))
+allocation_a_ord<-ordinate(allocation_a, method="PCoA", "wunifrac")
+plot_ordination(allocation_a, allocation_a_ord, color="Allocation_Groups")+stat_ellipse()+labs(title="Weighted Unifrac PCoA Pre and Post Depressed Participant \nSamples Probiotic Treatment", color="Probiotics")+scale_color_manual(values=c("orange", "deepskyblue2"), labels=c("Post Probiotics", "Pre Probiotics"))
+
+allocation_b<-subset_samples(depression2017_fil, Allocation_Groups %in% c("PreB","PostB"))
+allocation_b_ord<-ordinate(allocation_b, method="PCoA", "wunifrac")
+plot_ordination(allocation_b, allocation_b_ord, color="Allocation_Groups")+stat_ellipse()+labs(title="Weighted Unifrac PCoA Pre and Post Depressed Participant \nSamples Placebo Treatment", color="Placebo")+scale_color_manual(values=c("orange", "deepskyblue2"), labels=c("Post Placebo", "Pre Placebo"))
+
+
+##Top100 Dep_Dass Severity Correlation
+top_100_gnavus$PRE_BDI_LEVELS<-factor(top_100_gnavus$PRE_BDI_LEVELS, levels=c("mild", "moderate", "severe", "Con"))
+
+ggplot(top_100_gnavus, aes(x=Abundance, y=DEP_DASS))+geom_point(aes(colour=PRE_BDI_LEVELS)) + labs(title="DEP_DASS correlation with R. gnavus 360015", colour="BDI Severity Levels")+geom_smooth(method=lm)+scale_colour_manual(values=c("dodgerblue1","orange1","red2","limegreen"), labels=c("Mild", "Moderate", "Severe", "Control"))
+
+
+##Probiotics 
+ggplot(probiotics, aes(x=Participant_Group, y=sum_abund, fill=Allocation_Groups))+geom_bar(stat="identity", position="dodge")+labs(title="Pre and Post Probiotic Treatment Baseline\nDepressed Participants Probiotic Levels", y="% Relative Abundance", x="Sample",fill="Pre and Post")+theme(axis.text.x=element_text(angle=90, size=8))+facet_grid(.~Genus)+coord_fixed(ratio=155, expand = TRUE)+scale_fill_manual(values=c("deepskyblue3","red2"), labels=c("Pre Probiotic","Post Probiotic"))
+
 
 
 ```
