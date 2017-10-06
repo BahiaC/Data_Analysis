@@ -15,7 +15,10 @@ library("ggplot2")
 library("vegan")
 library("reshape2")
 library("tidyverse")
+library("grid")
+library("gridExtra")
 ```
+
 
 #Setting up in R
 ```{r Setting up in R}
@@ -310,7 +313,7 @@ plot_ordination(allocation_b, allocation_b_ord, color="Allocation_Groups")+stat_
 #Transform an OTU table from counts to proportions between 0 and 1.
 depression2017_rel_1<-transform_sample_counts(depression2017_fil, function(x) x/sum(x))
 
-depression2017_rel_2<-transform_sample_counts(depression2017_rare, function(x) x/sum(x))
+depression2017_rel_2<-transform_sample_counts(depression2017_rare, function(x) x/sum(x)*100)
 
 
 depression2017_rel<-transform_sample_counts(depression2017_1, function(x) x/sum(x))
@@ -496,7 +499,6 @@ depression_smelt_rare_counts %>% mutate(meanAbund= mean(Abundance)) %>% filter(O
 t_otu_depression2017<-as.matrix(t(otu_table(depression2017_1)))
 curve<-rarecurve(t_otu_depression2017, step=500, label=FALSE, xlim=c(0,50000), ylim=c(0,2000), ylab = "OTU Count", xaxt="n")
 
-label(title="Rarefaction Curve of All Microbiome Samples")
 axis(1)
 abline(v=28170, col="red")
 
@@ -505,53 +507,89 @@ abline(v=28170, col="red")
 
 phyla_plot<-depression_smelt %>% filter(Participant %in% c("Pre", "Con"))
 
-ggplot(phyla_plot, aes(x=Phylum, y=Abundance, colour=Phylum, position="dodge"))+geom_bar(stat="identity")+facet_grid(.~Participant)+scale_colour_manual(values=c("red2", "orange1", "yellow1", "limegreen", "deepskyblue2","purple1", "hotpink"), labels=c("Actinobacteria", "Bacteroidetes", "Firmicutes", "Proteobacteria", "Synergistetes", "TM7", "Verrucomicrobia"))
+phyla_plot_av<-depression_smelt %>% 
+  filter(Participant %in% c("Pre", "Con")) %>%
+  group_by(Participant, Phylum, Sample) %>%
+  summarise(sum_p=sum(Abundance)) %>%
+  group_by(Participant, Phylum) %>%
+  summarise(av_abund=mean(sum_p))
+
+ggplot(phyla_plot_av, aes(x=Participant, y=av_abund, fill=Phylum))+geom_bar(stat="identity")+scale_x_discrete(labels=c("Controls", "Baseline Depressed"))+scale_fill_manual(values=c("red2", "orange1", "yellow1", "limegreen", "deepskyblue2","purple1", "hotpink"), labels=c("Actinobacteria", "Bacteroidetes", "Firmicutes", "Proteobacteria", "Synergistetes", "TM7", "Verrucomicrobia"))
+
+pre_con_labels<-c('Con'="Controls", 'Pre'="Baseline Depressed")
+
+ggplot(phyla_plot, aes(x=Sample, y=Abundance, fill=Phylum))+geom_bar(stat="identity")+scale_fill_manual(values=c("red2", "orange1", "yellow1", "limegreen", "deepskyblue2","purple1", "hotpink"), labels=c("Actinobacteria", "Bacteroidetes", "Firmicutes", "Proteobacteria", "Synergistetes", "TM7", "Verrucomicrobia"))+facet_grid(.~Participant, labeller=as_labeller(pre_con_labels), scales="free")+theme(legend.key.size=unit(1, "line"), axis.text.x=element_text(angle=90, hjust=1, size=5))
 
 
 ##PreCon AlphaDiv
-plot_richness(dep_con_richness, x="Dep_Con", measures=c("Observed", "Chao1","Shannon"))+ geom_boxplot()+xlab("Group")+ylab("Diversity")+labs(title="Diversity of Baseline Depressed Samples and Healthy Controls")+scale_x_discrete(limits=c("Dep", "Con"))
+plot_richness(dep_con_richness, x="Dep_Con", measures=c("Observed"))+ geom_boxplot()+xlab("Group")+ylab("Diversity")+scale_x_discrete(limits=c("Dep", "Con"), labels=c("Baseline Depressed", "Controls"))+theme(axis.text.x=element_text(angle=360))
+
+
+observed_rich<-c('Observed'="Observed Richness")
 
 ##PreCon BetaDiv
-plot_ordination(pre_con_rare_fil,pre_con_ord, color="Participant") + stat_ellipse()+labs(title="Weighted Unifrac PCoA Baseline Depressed vs Controls")+scale_color_manual(values=c("limegreen", "red2"), labels=c("Controls", "Baseline Depressed")) 
+plot_ordination(pre_con_rare_fil,pre_con_ord, color="Participant") + stat_ellipse()+scale_color_manual(values=c("limegreen", "red2"), labels=c("Controls", "Baseline\n Depressed"))+theme(legend.key.size=unit(1, "line"))+labs(color="Group")
 
 ##PreCon DepDass Roseburia 
-depdass_roseburia<-ggplot(roseburia_counts_DepDass, aes(x=Abundance, y=DEP_DASS))+geom_point(aes(color=Participant)) + labs(title="DEP_Dass Correlation to Rosburia 518438 in Baseline \nDepressed and Control Samples")+geom_smooth(method=lm)
+depdass_roseburia<-ggplot(roseburia_counts_DepDass, aes(x=Abundance, y=DEP_DASS))+geom_point(aes(color=Participant))+geom_smooth(method=lm)
 
-depdass_roseburia + scale_colour_manual(values=c("green","red"), labels=c("Controls", "Baseline Depressed"))
+depdass_roseburia + scale_colour_manual(values=c("green","red"), labels=c("Controls", "Baseline Depressed"))+labs(color="Group")+theme(legend.key.size=unit(1,"line"))
 
 ##SevereMild Ruminoc
-depression_smelt_rare_counts %>% mutate(meanAbund= mean(Abundance)) %>% filter(OTU=="295748") %>% filter(PRE_BDI_LEVELS!=("NA")) %>% filter(PRE_BDI_LEVELS!=("moderate")) %>%ggplot(aes(x=PRE_BDI_LEVELS, y=Abundance))+ geom_point()+labs(title="Abundance of OTU 295748 f_Ruminococcaceae in Severe &\nMild BDI Baseline Depressed Samples", x="BDI Severity Level", fill="BDI Severity Level")+geom_boxplot()+scale_x_discrete(labels=c("Mild", "Severe"))
+depression_smelt_rare_counts %>% mutate(meanAbund= mean(Abundance)) %>% filter(OTU=="295748") %>% mutate(stddev= stdev(meanAbund)) %>%filter(PRE_BDI_LEVELS!=("NA")) %>% filter(PRE_BDI_LEVELS!=("moderate")) %>%ggplot(aes(x=PRE_BDI_LEVELS, y=Abundance))+ geom_point()+labs(x="BDI Severity Level", fill="BDI Severity Level")+geom_boxplot()+scale_x_discrete(labels=c("Mild", "Severe")) 
 
 
 ##PrePost AlphaDiv
 allocation_a_richness<-subset_samples(depression2017_fil, Allocation_Groups %in% c("PreA", "PostA"))
-plot_richness(allocation_a_richness, x="Allocation_Groups", measures=c("Observed", "Chao1","Shannon"))+ geom_boxplot()+xlab("Group")+ylab("Diversity")+scale_x_discrete(limits=c("PreA", "PostA"))+labs(title="Pre and Post Depressed Particpant Samples Treated with Probiotics")
+
+obs_a_plot<-plot_richness(allocation_a_richness, x="Allocation_Groups", measures=c("Observed"))+ geom_boxplot()+xlab("Group")+ylab("Diversity")+scale_x_discrete(limits=c("PreA", "PostA"), labels=c("Pre Probiotic", "Post Probiotic"))+theme(axis.text.x=element_text(angle=360))
 
 allocation_b_richness<-subset_samples(depression2017_fil, Allocation_Groups %in% c("PreB", "PostB"))
-plot_richness(allocation_b_richness, x="Allocation_Groups", measures=c("Observed", "Chao1","Shannon"))+ geom_boxplot()+xlab("Group")+ylab("Diversity")+scale_x_discrete(limits=c("PreB", "PostB"))+labs(title="Pre and Post Depressed Particpant Samples Treated with Placebo")
+obs_b_plot<-plot_richness(allocation_b_richness, x="Allocation_Groups", measures=c("Observed"))+ geom_boxplot()+xlab("Group")+ylab("Diversity")+scale_x_discrete(limits=c("PreB", "PostB"), labels=c("Pre Placebo", "Post Placebo"))+theme(axis.text.x=element_text(angle=360))
+
+grid.arrange(obs_a_plot, obs_b_plot, ncol=2)
+g <- arrangeGrob(obs_a_plot, obs_b_plot, ncol=2)
+ ggsave(file="whatever.pdf", g)
+
+
 
 ##PrePost BetaDiv (line 287)
 plot_ordination(allocation_groups, allocation_groups_ord, color="Allocation_Groups")+stat_ellipse()+facet_wrap(~Allocation)+labs(title="Weighted UniFrac PCoA Allocation A and B; Pre and Post")
 
 allocation_a<-subset_samples(depression2017_fil, Allocation_Groups %in% c("PreA","PostA"))
 allocation_a_ord<-ordinate(allocation_a, method="PCoA", "wunifrac")
-plot_ordination(allocation_a, allocation_a_ord, color="Allocation_Groups")+stat_ellipse()+labs(title="Weighted Unifrac PCoA Pre and Post Depressed Participant \nSamples Probiotic Treatment", color="Probiotics")+scale_color_manual(values=c("orange", "deepskyblue2"), labels=c("Post Probiotics", "Pre Probiotics"))
+
+a_beta<-plot_ordination(allocation_a, allocation_a_ord, color="Allocation_Groups")+stat_ellipse()+labs(color="Probiotics")+scale_color_manual(values=c("deepskyblue2","orange"), limits=c("PreA", "PostA"), labels=c("Pre Probiotic","Post Probiotic"))
 
 allocation_b<-subset_samples(depression2017_fil, Allocation_Groups %in% c("PreB","PostB"))
 allocation_b_ord<-ordinate(allocation_b, method="PCoA", "wunifrac")
-plot_ordination(allocation_b, allocation_b_ord, color="Allocation_Groups")+stat_ellipse()+labs(title="Weighted Unifrac PCoA Pre and Post Depressed Participant \nSamples Placebo Treatment", color="Placebo")+scale_color_manual(values=c("orange", "deepskyblue2"), labels=c("Post Placebo", "Pre Placebo"))
 
+b_beta<-plot_ordination(allocation_b, allocation_b_ord, color="Allocation_Groups")+stat_ellipse()+labs(color="Placebo")+scale_color_manual(values=c("deepskyblue2","orange"), limits=c("PreB", "PostB"), labels=c("Pre Placebo","Post Placebo"))
+
+grid.arrange(a_beta, b_beta, nrow=2)
+g <- arrangeGrob(a_beta, b_beta, nrow=2)
+ ggsave(file="Beta (PrePost).pdf", g)
 
 ##Top100 Dep_Dass Severity Correlation
 top_100_gnavus$PRE_BDI_LEVELS<-factor(top_100_gnavus$PRE_BDI_LEVELS, levels=c("mild", "moderate", "severe", "Con"))
 
-ggplot(top_100_gnavus, aes(x=Abundance, y=DEP_DASS))+geom_point(aes(colour=PRE_BDI_LEVELS)) + labs(title="DEP_DASS correlation with R. gnavus 360015", colour="BDI Severity Levels")+geom_smooth(method=lm)+scale_colour_manual(values=c("dodgerblue1","orange1","red2","limegreen"), labels=c("Mild", "Moderate", "Severe", "Control"))
+ggplot(top_100_gnavus, aes(x=Abundance, y=DEP_DASS))+geom_point(aes(colour=PRE_BDI_LEVELS)) + labs(colour="BDI Severity\nLevels")+geom_smooth(method=lm)+scale_colour_manual(values=c("dodgerblue1","orange1","red2","limegreen"), labels=c("Mild", "Moderate", "Severe", "Control"))+theme(legend.key.size=unit(1,"line"))
 
 
 ##Probiotics 
-ggplot(probiotics, aes(x=Participant_Group, y=sum_abund, fill=Allocation_Groups))+geom_bar(stat="identity", position="dodge")+labs(title="Pre and Post Probiotic Treatment Baseline\nDepressed Participants Probiotic Levels", y="% Relative Abundance", x="Sample",fill="Pre and Post")+theme(axis.text.x=element_text(angle=90, size=8))+facet_grid(.~Genus)+coord_fixed(ratio=155, expand = TRUE)+scale_fill_manual(values=c("deepskyblue3","red2"), labels=c("Pre Probiotic","Post Probiotic"))
+ggplot(probiotics, aes(x=Participant_Group, y=sum_abund, fill=Allocation_Groups))+geom_bar(stat="identity", position="dodge")+labs(x="Sample",fill="Probiotics",y="Abundance")+theme(axis.text.x=element_text(angle=90, size=7), legend.key.size=unit(1,"line"))+facet_grid(.~Genus)+scale_fill_manual(values=c("deepskyblue3","orange"), labels=c("Pre Probiotic","Post Probiotic"))
 
 
 
 ```
+```{r, ANOVA pre scores}
+pre_data<-data.frame(sample_data(allocation_groups)[sample_data(allocation_groups)$Allocation_Groups_All %in% c("PreA","PreB")])
+anova(lm(BDI~Allocation_Groups_All, data=pre_data))
+anova(lm(DEP_DASS~Allocation_Groups_All, data=pre_data))
+anova(lm(ANX_DASS~Allocation_Groups_All, data=pre_data))
+anova(lm(STR_DASS~Allocation_Groups_All, data=pre_data))
+anova(lm(CogReact.Total.Score~Allocation_Groups_All, data=pre_data))
+
+```
+
 
