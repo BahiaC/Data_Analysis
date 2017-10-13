@@ -25,14 +25,10 @@ library("gridExtra")
 
 #otu clustered and chimeras removed
 biom<-"data/otu_table_final1_json.biom"
-
-#didn't run this as it wouldnt work
-map<-read.table("data/mapping_depression_newR.txt", header=TRUE, row.names=1)
-
+map<-read.table("data/mapping_depression_newR.txt", sep="\t", header=TRUE, row.names=1)
 #had to run this comand as the other one (^) wouldnt work for some reason 
-map<-read.table(file.choose("data/mapping_depression_newR.txt"), sep="\t", header=TRUE, row.names=1)
+#map<-read.table(file.choose("data/mapping_depression_newR.txt"), sep="\t", header=TRUE, row.names=1)
 
-#Normally would just use the read_tree command, but this particular tree is a bit different to ususal.
 tree<-read_tree("data/rep_set.tre")
 
 ## Import Data to PhyloSeq
@@ -67,7 +63,6 @@ depression2017_rare<-rarefy_even_depth(depression2017_1, sample.size=28170, rngs
 #16331 taxa and 131 samples 
 depression2017_rare
 
-
 #filter out rare OTUs
 depression2017_fil<- filter_taxa(depression2017_rare, function(x) sum(x)>=10 & sum(x>0)>0.25*length(x), TRUE)
 
@@ -99,20 +94,20 @@ abline(v=28170, col="red")
 
 #You many want to remove certain samples or OTUs from the analysis.  There are several ways to do this in Phyloseq, all require creating a new Phyloseq object.
 #First example, subset to samples that match a string in a column of the sample data (i.e. the mapping file)
-practice2017_rare_controls<-subset_samples(practice2017_rare, Disease_status=="control")
-sample_data(practice2017_rare_controls)
+#depression2017_rare_controls<-subset_samples(depression2017_rare, Participant=="con")
+#sample_data(practice2017_rare_controls)
 #Second example, subset to samples that match everything except the string in a column of the sample data
-practice2017_rare_disease<-subset_samples(practice2017_rare, Disease_status!="control")
+#practice2017_rare_disease<-subset_samples(practice2017_rare, Disease_status!="control")
 #Now check the sample data for your new object to make sure it did what you think it did.  In this example I'm only returning the column that lists Disease_status
-sample_data(practice2017_rare_disease)$Disease_status
+#sample_data(practice2017_rare_disease)$Disease_status
 #Third example, subset to samples that match several strings in a column of the sample data
-practice2017_rare_disease2<-subset_samples(practice2017_rare, Disease_status%in%c("mdd", "recovering_mdd"))
+#practice2017_rare_disease2<-subset_samples(practice2017_rare, #Disease_status%in%c("mdd", "recovering_mdd"))
 #And check the sample data as before.
-sample_data(practice2017_rare_disease2)$Disease_status
+#sample_data(practice2017_rare_disease2)$Disease_status
 #Forth example, subset to samples that match everything except several strings in a column of the sample data
-practice2017_rare_controls2<-subset_samples(practice2017_rare, !(Disease_status%in%c("mdd", "recovering_mdd")))
+#practice2017_rare_controls2<-subset_samples(practice2017_rare, !(Disease_status%in%c("mdd", "recovering_mdd")))
 #And check the sample data as before.
-sample_data(practice2017_rare_controls2)$Disease_status
+#sample_data(practice2017_rare_controls2)$Disease_status
 ```
 
 #Alpha diversity analysis
@@ -196,6 +191,10 @@ wilcox.test(Observed ~ ProA_B, data=depression_rare_richness)
 kruskal.test(Observed ~ PRE_BDI_LEVELS, data=depression_rare_richness)
 ##Kruskal-Wallis chi-squared = 3.1845, df = 2, p-value = 0.2035
 
+kruskal.test(Observed ~ MINI, data=depression_rare_richness)
+kruskal.test(Shannon ~ MINI, data=depression_rare_richness)
+kruskal.test(Chao1 ~ MINI, data=depression_rare_richness)
+
 ```
 
 
@@ -268,10 +267,6 @@ proA_B_dist<-distance(proA_B_rare_fil, "wunifrac")
 
 adonis(proA_B_dist ~ ProA_B + Extraction_batch + PCR_batch, data=data.frame(sample_data(proA_B_rare_fil)))
 
-
-
-
-
 #severity vs moderate vs mild
 pre_bdi_levels_rare_fil<-subset_samples(depression2017_fil, PRE_BDI_LEVELS %in% c("severe","moderate", "mild"))
 pre_bdi_levels_ord<-ordinate(pre_bdi_levels_rare_fil, method="PCoA", "wunifrac")
@@ -291,7 +286,6 @@ allocation_groups<-subset_samples(depression2017_fil, Allocation_Groups %in% c("
 allocation_groups_ord<-ordinate(allocation_groups, method="PCoA", "wunifrac")
 plot_ordination(allocation_groups, allocation_groups_ord, color="Allocation_Groups")+stat_ellipse()+facet_wrap(~Allocation)+labs(title="Weighted UniFrac PCoA Allocation A and B; Pre and Post")
 
-
 allocation_a<-subset_samples(depression2017_fil, Allocation_Groups %in% c("PreA","PostA"))
 allocation_a_ord<-ordinate(allocation_a, method="PCoA", "wunifrac")
 plot_ordination(allocation_a, allocation_a_ord, color="Allocation_Groups")+stat_ellipse()+labs(title="Weighted Unifrac PCoA Pre and Post Depressed Participant \nSamples Probiotic Treatment")
@@ -301,22 +295,19 @@ allocation_b_ord<-ordinate(allocation_b, method="PCoA", "wunifrac")
 
 plot_ordination(allocation_b, allocation_b_ord, color="Allocation_Groups")+stat_ellipse()+labs(title="Weighted Unifrac PCoA Pre and Post Depressed Participant \nSamples Placebo Treatment")
 
-
 ```
-
-
 
 
 
 ```{r Plotting}
 
 #Transform an OTU table from counts to proportions between 0 and 1.
-depression2017_rel_1<-transform_sample_counts(depression2017_fil, function(x) x/sum(x))
+depression2017_rel_1<-transform_sample_counts(depression2017_fil, function(x) x/sum(x)*100)
 
 depression2017_rel_2<-transform_sample_counts(depression2017_rare, function(x) x/sum(x)*100)
 
 
-depression2017_rel<-transform_sample_counts(depression2017_1, function(x) x/sum(x))
+depression2017_rel<-transform_sample_counts(depression2017_1, function(x) x/sum(x)*100)
                                             
 #I use the psmelt function to get the data into a form that ggplot likes, dplyr to filter that data I want, and ggplot to do the plotting
 #Melt data into a "long” form. I used the OTU table rarefied to 28170 and converted to relative abundance.
@@ -376,7 +367,7 @@ probiotics %>% filter(Pre_ProA%in% c("A","pre")) %>%
 probiotics_lacto<-depression_smelt_rare %>% filter(Genus %in% c("g__Lacotococcus"))
 
 ggplot(probiotics, aes(x=Participant_Group, y=sum_abund, fill=Allocation_Groups))+geom_bar(stat="identity", position="dodge")+labs(title="Pre and Post Probiotic Treatment Baseline\nDepressed Participants Probiotic Levels", y="% Relative Abundance", x="Sample",fill="Pre and Post")+theme(axis.text.x=element_text(angle=90, size=8))+facet_grid(.~Genus)+coord_fixed(ratio=155, expand = TRUE)+scale_fill_manual(values=c("deepskyblue3","red3"), labels=c("Pre Probiotic","Post Probiotic"))
-w
+
 
 probiotics_bif<- depression_smelt2 %>% filter(Genus %in% c("g__Bifidobacterium")) %>% group_by(Sample, Genus) %>% mutate(sum_abund= sum(Abundance)) %>% select(OTU,Sample,Abundance,Participant,Participant_Group,ProA_B,Pre_ProA ,Pre_PostB,Genus,sum_abund, Allocation_All, Allocation_Groups) %>% filter(Participant %in% c("Pre","Post")) %>% filter(Pre_ProA!="NA")%>% filter(Participant_Group!="P46")
 
@@ -516,36 +507,39 @@ phyla_plot_av<-depression_smelt %>%
 
 ggplot(phyla_plot_av, aes(x=Participant, y=av_abund, fill=Phylum))+geom_bar(stat="identity")+scale_x_discrete(labels=c("Controls", "Baseline Depressed"))+scale_fill_manual(values=c("red2", "orange1", "yellow1", "limegreen", "deepskyblue2","purple1", "hotpink"), labels=c("Actinobacteria", "Bacteroidetes", "Firmicutes", "Proteobacteria", "Synergistetes", "TM7", "Verrucomicrobia"))
 
-pre_con_labels<-c('Con'="Controls", 'Pre'="Baseline Depressed")
+pre_con_labels<-c('Con'="Controls", 'Pre'="Depressed")
 
-ggplot(phyla_plot, aes(x=Sample, y=Abundance, fill=Phylum))+geom_bar(stat="identity")+scale_fill_manual(values=c("red2", "orange1", "yellow1", "limegreen", "deepskyblue2","purple1", "hotpink"), labels=c("Actinobacteria", "Bacteroidetes", "Firmicutes", "Proteobacteria", "Synergistetes", "TM7", "Verrucomicrobia"))+facet_grid(.~Participant, labeller=as_labeller(pre_con_labels), scales="free")+theme(legend.key.size=unit(1, "line"), axis.text.x=element_text(angle=90, hjust=1, size=5))
+ggplot(phyla_plot, aes(x=Sample, y=Abundance, fill=Phylum))+geom_bar(stat="identity")+scale_fill_manual(values=c("red2", "orange1", "yellow1", "limegreen", "deepskyblue2","purple1", "hotpink"), labels=c("Actinobacteria", "Bacteroidetes", "Firmicutes", "Proteobacteria", "Synergistetes", "TM7", "Verrucomicrobia"))+facet_grid(.~Participant, labeller=as_labeller(pre_con_labels), scales="free")+theme(legend.key.size=unit(1, "line"), axis.text.x=element_text(angle=90, hjust=1, size=5))+labs(y="% Relative Abundance")
 
 
 ##PreCon AlphaDiv
-plot_richness(dep_con_richness, x="Dep_Con", measures=c("Observed"))+ geom_boxplot()+xlab("Group")+ylab("Diversity")+scale_x_discrete(limits=c("Dep", "Con"), labels=c("Baseline Depressed", "Controls"))+theme(axis.text.x=element_text(angle=360))
+plot_richness(dep_con_richness, x="Dep_Con", measures=c("Observed"))+ geom_boxplot()+xlab("Group")+ylab("Diversity")+scale_x_discrete(limits=c("Dep", "Con"), labels=c("Depressed", "Controls"))+theme(axis.text.x=element_text(angle=360))+labs(y="Richness")
 
 
 observed_rich<-c('Observed'="Observed Richness")
 
 ##PreCon BetaDiv
-plot_ordination(pre_con_rare_fil,pre_con_ord, color="Participant") + stat_ellipse()+scale_color_manual(values=c("limegreen", "red2"), labels=c("Controls", "Baseline\n Depressed"))+theme(legend.key.size=unit(1, "line"))+labs(color="Group")
+plot_ordination(pre_con_rare_fil,pre_con_ord, color="Participant") + stat_ellipse()+scale_color_manual(values=c("limegreen", "red2"), labels=c("Controls", "Depressed"))+theme(legend.key.size=unit(1, "line"))+labs(color="Group")
 
 ##PreCon DepDass Roseburia 
-depdass_roseburia<-ggplot(roseburia_counts_DepDass, aes(x=Abundance, y=DEP_DASS))+geom_point(aes(color=Participant))+geom_smooth(method=lm)
+depdass_roseburia<-ggplot(roseburia_DepDass, aes(x=Abundance, y=DEP_DASS))+geom_point(aes(color=Participant))+geom_smooth(method=lm)
 
-depdass_roseburia + scale_colour_manual(values=c("green","red"), labels=c("Controls", "Baseline Depressed"))+labs(color="Group")+theme(legend.key.size=unit(1,"line"))
+depdass_roseburia + scale_colour_manual(values=c("green","red"), labels=c("Controls", "Depressed"))+labs(color="Group", y="DASS Depression Score", x="% Relative Abundance")+theme(legend.key.size=unit(1,"line"))
 
 ##SevereMild Ruminoc
-depression_smelt_rare_counts %>% mutate(meanAbund= mean(Abundance)) %>% filter(OTU=="295748") %>% mutate(stddev= stdev(meanAbund)) %>%filter(PRE_BDI_LEVELS!=("NA")) %>% filter(PRE_BDI_LEVELS!=("moderate")) %>%ggplot(aes(x=PRE_BDI_LEVELS, y=Abundance))+ geom_point()+labs(x="BDI Severity Level", fill="BDI Severity Level")+geom_boxplot()+scale_x_discrete(labels=c("Mild", "Severe")) 
+severemild_rumino<-depression_smelt_rare %>% mutate(meanAbund= mean(Abundance)) %>% filter(OTU=="295748") %>% mutate(stddev= sd(Abundance)) %>%filter(PRE_BDI_LEVELS!=("NA")) %>% filter(PRE_BDI_LEVELS!=("moderate"))%>% filter(PRE_BDI_LEVELS!="Con")
+  
+ggplot(severemild_rumino, aes(x=PRE_BDI_LEVELS, y=Abundance))+ geom_point()+labs(x="BDI Severity Level", fill="BDI Severity Level", y="% Relative Abundance")+geom_boxplot()+scale_x_discrete(labels=c("Mild","Severe")) 
 
 
+  
 ##PrePost AlphaDiv
 allocation_a_richness<-subset_samples(depression2017_fil, Allocation_Groups %in% c("PreA", "PostA"))
 
-obs_a_plot<-plot_richness(allocation_a_richness, x="Allocation_Groups", measures=c("Observed"))+ geom_boxplot()+xlab("Group")+ylab("Diversity")+scale_x_discrete(limits=c("PreA", "PostA"), labels=c("Pre Probiotic", "Post Probiotic"))+theme(axis.text.x=element_text(angle=360))
+obs_a_plot<-plot_richness(allocation_a_richness, x="Allocation_Groups", measures=c("Observed"))+ geom_boxplot()+xlab("Group")+ylab("Diversity")+scale_x_discrete(limits=c("PreA", "PostA"), labels=c("Pre Probiotic", "Post Probiotic"))+theme(axis.text.x=element_text(angle=360))+labs(y="Richness")
 
 allocation_b_richness<-subset_samples(depression2017_fil, Allocation_Groups %in% c("PreB", "PostB"))
-obs_b_plot<-plot_richness(allocation_b_richness, x="Allocation_Groups", measures=c("Observed"))+ geom_boxplot()+xlab("Group")+ylab("Diversity")+scale_x_discrete(limits=c("PreB", "PostB"), labels=c("Pre Placebo", "Post Placebo"))+theme(axis.text.x=element_text(angle=360))
+obs_b_plot<-plot_richness(allocation_b_richness, x="Allocation_Groups", measures=c("Observed"))+ geom_boxplot()+xlab("Group")+ylab("Diversity")+scale_x_discrete(limits=c("PreB", "PostB"), labels=c("Pre Placebo", "Post Placebo"))+theme(axis.text.x=element_text(angle=360))+labs(y="Richness")
 
 grid.arrange(obs_a_plot, obs_b_plot, ncol=2)
 g <- arrangeGrob(obs_a_plot, obs_b_plot, ncol=2)
@@ -573,15 +567,19 @@ g <- arrangeGrob(a_beta, b_beta, nrow=2)
 ##Top100 Dep_Dass Severity Correlation
 top_100_gnavus$PRE_BDI_LEVELS<-factor(top_100_gnavus$PRE_BDI_LEVELS, levels=c("mild", "moderate", "severe", "Con"))
 
-ggplot(top_100_gnavus, aes(x=Abundance, y=DEP_DASS))+geom_point(aes(colour=PRE_BDI_LEVELS)) + labs(colour="BDI Severity\nLevels")+geom_smooth(method=lm)+scale_colour_manual(values=c("dodgerblue1","orange1","red2","limegreen"), labels=c("Mild", "Moderate", "Severe", "Control"))+theme(legend.key.size=unit(1,"line"))
+ggplot(top_100_gnavus, aes(x=Abundance, y=DEP_DASS))+geom_point(aes(colour=PRE_BDI_LEVELS)) + labs(colour="BDI Severity\nLevels", y="DASS Depression Score", x="% Relative Abundance")+geom_smooth(method=lm)+scale_colour_manual(values=c("dodgerblue1","orange1","red2","limegreen"), labels=c("Mild", "Moderate", "Severe", "Control"))+theme(legend.key.size=unit(1,"line"))
 
 
 ##Probiotics 
-ggplot(probiotics, aes(x=Participant_Group, y=sum_abund, fill=Allocation_Groups))+geom_bar(stat="identity", position="dodge")+labs(x="Sample",fill="Probiotics",y="Abundance")+theme(axis.text.x=element_text(angle=90, size=7), legend.key.size=unit(1,"line"))+facet_grid(.~Genus)+scale_fill_manual(values=c("deepskyblue3","orange"), labels=c("Pre Probiotic","Post Probiotic"))
+ggplot(probiotics, aes(x=Participant_Group, y=sum_abund, fill=Allocation_Groups))+geom_bar(stat="identity", position="dodge")+labs(x="Sample",fill="Probiotics",y="% Relative Abundance")+theme(axis.text.x=element_text(angle=90, size=7), legend.key.size=unit(1,"line"))+facet_grid(.~Genus)+scale_fill_manual(values=c("deepskyblue3","orange"), labels=c("Pre Probiotic","Post Probiotic"))
+
+probiotics$Allocation_Groups<-factor(probiotics$Allocation_Groups, levels=c("PreA", "PostA"))
+
 
 
 
 ```
+
 ```{r, ANOVA pre scores}
 pre_data<-data.frame(sample_data(allocation_groups)[sample_data(allocation_groups)$Allocation_Groups_All %in% c("PreA","PreB")])
 anova(lm(BDI~Allocation_Groups_All, data=pre_data))
@@ -589,7 +587,43 @@ anova(lm(DEP_DASS~Allocation_Groups_All, data=pre_data))
 anova(lm(ANX_DASS~Allocation_Groups_All, data=pre_data))
 anova(lm(STR_DASS~Allocation_Groups_All, data=pre_data))
 anova(lm(CogReact.Total.Score~Allocation_Groups_All, data=pre_data))
+anova(lm(Age~Allocation_Groups_All, data=pre_data))
 
+
+precon<-subset_samples(depression2017_fil, Dep_Con %in% c("Dep","Con"))
+precon_data<-data.frame(sample_data(precon)[sample_data(precon)$Dep_Con %in% c("Dep","Con")])
+
+anova(lm(Age~Dep_Con, data=precon_data))
+anova(lm(BDI~Dep_Con, data=precon_data))
+anova(lm(DEP_DASS~Dep_Con, data=precon_data))
+anova(lm(ANX_DASS~Dep_Con, data=precon_data))
+anova(lm(STR_DASS~Dep_Con, data=precon_data))
+anova(lm(CogReact_Score~Dep_Con, data=precon_data))
+```
+
+```{r Significant Test Probiotics}
+
+probiotics<-depression_smelt_rare %>% filter(Genus %in% c("g__Bifidobacterium","g__Lactobacillus", "g__Lacotococcus")) %>% group_by(SampleID.1, Genus) %>% mutate(sum_abund= sum(Abundance)) %>% filter(Participant %in% c("Pre","Post")) %>% filter(SampleID.1!="P46.pre")%>% filter(Allocation_Groups %in% c("PostA", "PreA"))
+
+probiotics_bifido<-probiotics %>% filter(Genus %in% c("g__Bifidobacterium")) %>% filter(Allocation_Groups %in% c("PreA", "PostA"))
+
+probiotics_lactobac<-probiotics %>% filter(Genus %in% c("g__Lactobacillus")) %>% filter(Allocation_Groups %in% c("PreA", "PostA"))
+
+probiotics_lactococ<-probiotics %>% filter(Genus %in% c("g__Lacotococcus")) %>% filter(Allocation_Groups %in% c("PreA", "PostA"))
+
+kruskal.test(Abundance ~ Pre_ProA, probiotics_bifido)
+kruskal.test(Abundance ~ Pre_ProA, probiotics_lactobac)
+kruskal.test(Abundance ~ Pre_ProA, probiotics_lactococ)
+
+```
+
+```{r StdDev for Mild/Severe}
+
+severemild<-depression_smelt_rare %>% filter(Participant=="Pre") %>% filter(Severe_Mild %in% c("severe", "mild")) %>% filter(OTU=="295748") %>% group_by(Severe_Mild, OTU) %>% mutate(meanAbund= mean(Abundance)) %>% mutate(stddev= sd(Abundance))
+
+severemild_fil<-depression_smelt %>% filter(Participant=="Pre") %>% filter(Severe_Mild %in% c("severe", "mild")) %>% filter(OTU=="295748") %>% group_by(Severe_Mild, OTU) %>% mutate(meanAbund= mean(Abundance)) %>% mutate(stddev= sd(Abundance))
+
+kruskal.test(Severe_Mild ~ Abundance, data=severemild)
 ```
 
 
