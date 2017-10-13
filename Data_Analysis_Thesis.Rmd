@@ -626,4 +626,64 @@ severemild_fil<-depression_smelt %>% filter(Participant=="Pre") %>% filter(Sever
 kruskal.test(Severe_Mild ~ Abundance, data=severemild)
 ```
 
+```{r Mock Community}
+
+#Check sequencing controls - mock communtiy
+#Look at blast results of mock seqs against reference seqs.  
+mock_blast<-read.delim(file="data/mock_seqs_full_blast.txt", header=TRUE, sep="\t")
+
+mock_blast %>% count(sseqid, pident) %>% 
+  arrange(desc(pident))%>% arrange(sseqid) %>% group_by(sseqid) %>%
+  dplyr::summarise(n_distinct(pident))
+#Summarise the number of hits with a distinct percent identity for each taxa in the mock community
+mock_summary<-mock_blast %>% group_by(sseqid, pident) %>%
+  arrange(sseqid, desc(pident)) %>%
+  summarise(n=n()) %>%
+  arrange(sseqid, desc(pident)) %>% group_by(sseqid) %>%
+  summarise(counts=sum(n))
+
+mock_98<-mock_blast %>% 
+  filter(pident>=98.000) %>%
+  arrange(sseqid,desc(pident)) %>% group_by(sseqid, pident) %>%
+  summarise(n=n()) %>%
+  group_by(sseqid) %>%
+  summarise(counts=sum(n))
+  
+mock_97<-mock_blast %>% 
+  filter(pident>=97.000) %>%
+  arrange(sseqid,desc(pident)) %>% group_by(sseqid, pident) %>%
+  summarise(n=n()) %>%
+  group_by(sseqid) %>%
+  summarise(counts=sum(n))
+
+#Calculate proportion of seqs with < 97% identity to reference
+less_97<-mock_blast %>%
+  filter(pident<97) %>%
+  nrow()/nrow(mock_blast)
+less_99<- mock_blast %>%
+  filter(pident<99) %>%
+  nrow()/nrow(mock_blast)  
+
+#Calculate observed vs expected frequency of taxa for hits > 97% identity to a reference.
+
+#observed<- mock_97 %>% group_by(queryseqid,sseqid) %>% mutate(count=1)%>% group_by(sseqid) %>% summarise(counts=sum(count)) %>% mutate(observed=counts/sum(counts)*100)
+
+##wasn't working so did the code below:
+observed<- mock_blast %>%filter(pident<97) %>% group_by(queryseqid,sseqid) %>% mutate(count=1)%>% group_by(sseqid) %>% summarise(counts=sum(count)) %>% mutate(observed=counts/sum(counts)*100)
+
+expected<-c(15.7,10.4,10.0,18.8,15.9,4.6,11.3,13.3)
+
+observed_expected<-cbind(observed,expected) %>% select(sseqid, observed, expected)
+observed_expected$sseqid<-gsub("_16S[_2]*","", observed_expected$sseqid)
+
+melt(observed_expected) %>% 
+  ggplot(aes(x=sseqid,y=value, fill=variable))+geom_bar(stat="identity", position="dodge") + theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  labs(x="Mock Community Species", y="% Relative Abundance")+
+  theme(legend.title=element_blank())
+
+observed_expected<-observed_expected %>% mutate(fc=observed/expected) %>% 
+  mutate(log2fc=log2(fc))
+
+```
+
 
