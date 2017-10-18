@@ -17,6 +17,7 @@ library("reshape2")
 library("tidyverse")
 library("grid")
 library("gridExtra")
+library("zoo")
 ```
 
 
@@ -527,12 +528,16 @@ depdass_roseburia<-ggplot(roseburia_DepDass, aes(x=Abundance, y=DEP_DASS))+geom_
 
 depdass_roseburia + scale_colour_manual(values=c("green","red"), labels=c("Controls", "Depressed"))+labs(color="Group", y="DASS Depression Score", x="% Relative Abundance")+theme(legend.key.size=unit(1,"line"))
 
+roseburia_dep<- roseburia_DepDass %>% select(Abundance, DEP_DASS, Participant, OTU)
+
+roseburia_dep
+
 ##SevereMild Ruminoc
-severemild_rumino<-depression_smelt_rare %>% mutate(meanAbund= mean(Abundance)) %>% filter(OTU=="295748") %>% mutate(stddev= sd(Abundance)) %>%filter(PRE_BDI_LEVELS!=("NA")) %>% filter(PRE_BDI_LEVELS!=("moderate"))%>% filter(PRE_BDI_LEVELS!="Con")
-  
+severemild_rumino<-depression_smelt_rare %>% mutate(meanAbund= mean(Abundance)) %>% filter(OTU=="295748") %>% mutate(stddev= sd(Abundance)) %>%filter(PRE_BDI_LEVELS %in% c("severe","mild")) %>% select(Abundance, OTU, meanAbund, stddev, PRE_BDI_LEVELS)
+
 ggplot(severemild_rumino, aes(x=PRE_BDI_LEVELS, y=Abundance))+ geom_point()+labs(x="BDI Severity Level", fill="BDI Severity Level", y="% Relative Abundance")+geom_boxplot()+scale_x_discrete(labels=c("Mild","Severe")) 
 
-
+severemild_rumino %in% count(Abundance, 0)
   
 ##PrePost AlphaDiv
 allocation_a_richness<-subset_samples(depression2017_fil, Allocation_Groups %in% c("PreA", "PostA"))
@@ -616,14 +621,26 @@ kruskal.test(Abundance ~ Pre_ProA, probiotics_bifido)
 kruskal.test(Abundance ~ Pre_ProA, probiotics_lactobac)
 kruskal.test(Abundance ~ Pre_ProA, probiotics_lactococ)
 
+probiotics_lacto_pre<-depression_smelt_rare %>% filter(Genus %in% c("g__Lactobacillus")) %>% filter(SampleID.1!="P46.pre")%>% filter(Allocation_Groups %in% c("PreA")) %>% select(Abundance, Allocation_Groups, Participant, Genus, OTU)
+
+probiotics_lacto_post<-depression_smelt_rare %>% filter(Genus %in% c("g__Lactobacillus")) %>% filter(SampleID.1!="P46.pre")%>% filter(Allocation_Groups %in% c("PostA")) %>% select(Abundance, Allocation_Groups, Participant, Genus, OTU)
+
+probiotics_lacto_pre %>% summarise(meanAbund=mean(Abundance), sd=sd(Abundance))
+probiotics_lacto_post %>% summarise(meanAbund=mean(Abundance), sd=sd(Abundance))
+
+ggplot(probiotics_lacto, aes(x=Abundance, y=Allocation_Groups))+geom_boxplot()
+
+#placebo 
+placebo<-depression_smelt_rare %>% filter(Genus %in% c("g__Bifidobacterium","g__Lactobacillus", "g__Lacotococcus")) %>% group_by(SampleID.1, Genus) %>% mutate(sum_abund= sum(Abundance)) %>% filter(Participant %in% c("Pre","Post")) %>% filter(SampleID.1!="P46.pre")%>% filter(Allocation_Groups %in% c("PostA", "PreA"))
+
 ```
 
 ```{r StdDev for Mild/Severe}
 
-severemild<-depression_smelt_1 %>% filter(Participant=="Pre") %>% filter(Severe_Mild %in% c("severe", "mild")) %>% filter(OTU=="295748") %>% group_by(Severe_Mild, OTU) %>% summarise(meanAbund=mean(Abundance), sd=sd(Abundance))
+severemild<-depression_smelt_1 %>% filter(Participant=="Pre") %>% filter(Severe_Mild %in% c("severe", "mild")) %>% filter(OTU=="295748") %>% group_by(Severe_Mild, OTU) %in% select(OTU, Abundance, Severe_Mild)
+
 
 severemild_counts<-depression_smelt_fil_counts %>% filter(Participant=="Pre") %>% filter(Severe_Mild %in% c("severe", "mild")) %>% filter(OTU=="295748") %>% group_by(Severe_Mild, OTU) %>% summarise(meanAbund=mean(Abundance), sd=sd(Abundance))
-  
   
 
 kruskal.test(Severe_Mild ~ Abundance, data=severemild)
@@ -692,9 +709,95 @@ observed_expected %>% select(sseqid, observed, expected) %>% melt() %>%
 
 ```
 
-```{r}
+```{r ANCOVA}
 
-data<-data.frame(sample_data(depression2017)) %>% filter(Allocation_Groups %in% c("PreA", "PreB", "PostA", "PostB")) %>% select(BDI, Allocation, Participant)
-melt(data,"BDI")
+
+#BDI
+ancova_data<- data.frame(sample_data(depression2017)) %>% 
+  filter(Depression=="Y") %>%
+  mutate(patient=gsub("([P0-9]*).[postre]*","\\1",SampleID.1)) %>%
+  arrange(SampleID.1) %>% 
+  select (patient, SampleID.1, BDI,Probiotics,Participant,ProA_B) %>%
+  filter(Probiotics %in% c("B","A","pre")) %>%
+  do(na.locf(.)) %>% select(patient, BDI,Participant,ProA_B) %>%
+  dcast(patient + ProA_B ~ Participant, value.var="BDI") %>%
+  filter(patient!="P62")
+ancova_data$Post<-as.numeric(ancova_data$Post)
+ancova_data$Pre<-as.numeric(ancova_data$Pre)
+ggplot(ancova_data, aes(x=Post, y=Pre, colour=ProA_B, shape=ProA_B))+
+  geom_point() +
+  geom_smooth(method=lm, se=FALSE, fullrange=TRUE)
+
+anova(lm(Post~Pre*ProA_B, data=ancova_data))
+
+anova(lm(Post~Pre + ProA_B, data=ancova_data))
+
+#Depression DASS
+ancova_data_dep<- data.frame(sample_data(depression2017)) %>% 
+  filter(Depression=="Y") %>%
+  mutate(patient=gsub("([P0-9]*).[postre]*","\\1",SampleID.1)) %>%
+  arrange(SampleID.1) %>% 
+  select (patient, SampleID.1, DEP_DASS,Probiotics,Participant,ProA_B) %>%
+  filter(Probiotics %in% c("B","A","pre")) %>%
+  do(na.locf(.)) %>% select(patient, DEP_DASS,Participant,ProA_B) %>%
+  dcast(patient + ProA_B ~ Participant, value.var="DEP_DASS") %>%
+  filter(patient!="P62")
+ancova_data_dep$Post<-as.numeric(ancova_data_dep$Post)
+ancova_data_dep$Pre<-as.numeric(ancova_data_dep$Pre)
+
+anova(lm(Post~Pre*ProA_B, data=ancova_data_dep))
+
+anova(lm(Post~Pre + ProA_B, data=ancova_data_dep))
+
+#Anxiety DASS 
+ancova_data_anx<- data.frame(sample_data(depression2017)) %>% 
+  filter(Depression=="Y") %>%
+  mutate(patient=gsub("([P0-9]*).[postre]*","\\1",SampleID.1)) %>%
+  arrange(SampleID.1) %>% 
+  select (patient, SampleID.1, ANX_DASS,Probiotics,Participant,ProA_B) %>%
+  filter(Probiotics %in% c("B","A","pre")) %>%
+  do(na.locf(.)) %>% select(patient, ANX_DASS,Participant,ProA_B) %>%
+  dcast(patient + ProA_B ~ Participant, value.var="ANX_DASS") %>%
+  filter(patient!="P62")
+ancova_data_anx$Post<-as.numeric(ancova_data_anx$Post)
+ancova_data_anx$Pre<-as.numeric(ancova_data_anx$Pre)
+
+anova(lm(Post~Pre*ProA_B, data=ancova_data_anx))
+
+anova(lm(Post~Pre + ProA_B, data=ancova_data_anx))
+
+#Stress DASS 
+ancova_data_str<- data.frame(sample_data(depression2017)) %>% 
+  filter(Depression=="Y") %>%
+  mutate(patient=gsub("([P0-9]*).[postre]*","\\1",SampleID.1)) %>%
+  arrange(SampleID.1) %>% 
+  select (patient, SampleID.1, STR_DASS,Probiotics,Participant,ProA_B) %>%
+  filter(Probiotics %in% c("B","A","pre")) %>%
+  do(na.locf(.)) %>% select(patient, STR_DASS,Participant,ProA_B) %>%
+  dcast(patient + ProA_B ~ Participant, value.var="STR_DASS") %>%
+  filter(patient!="P62")
+ancova_data_str$Post<-as.numeric(ancova_data_str$Post)
+ancova_data_str$Pre<-as.numeric(ancova_data_str$Pre)
+
+anova(lm(Post~Pre*ProA_B, data=ancova_data_str))
+
+anova(lm(Post~Pre + ProA_B, data=ancova_data_str))
+
+#Cognitive Reactivity 
+ancova_data_cog<- data.frame(sample_data(depression2017)) %>% 
+  filter(Depression=="Y") %>%
+  mutate(patient=gsub("([P0-9]*).[postre]*","\\1",SampleID.1)) %>%
+  arrange(SampleID.1) %>% 
+  select (patient, SampleID.1, CogReact_Score,Probiotics,Participant,ProA_B) %>%
+  filter(Probiotics %in% c("B","A","pre")) %>%
+  do(na.locf(.)) %>% select(patient, CogReact_Score,Participant,ProA_B) %>%
+  dcast(patient + ProA_B ~ Participant, value.var="CogReact_Score") %>%
+  filter(patient!="P62")
+ancova_data_cog$Post<-as.numeric(ancova_data_cog$Post)
+ancova_data_cog$Pre<-as.numeric(ancova_data_cog$Pre)
+
+anova(lm(Post~Pre*ProA_B, data=ancova_data_cog))
+
+anova(lm(Post~Pre + ProA_B, data=ancova_data_cog))
 ```
 
