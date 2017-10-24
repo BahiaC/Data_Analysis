@@ -501,11 +501,15 @@ abline(v=28170, col="red")
 phyla_plot<-depression_smelt %>% filter(Participant %in% c("Pre", "Con"))
 
 phyla_plot_av<-depression_smelt %>% 
-  filter(Participant %in% c("Pre", "Con")) %>%
-  group_by(Participant, Phylum, Sample) %>%
-  summarise(sum_p=sum(Abundance)) %>%
-  group_by(Participant, Phylum) %>%
-  summarise(av_abund=mean(sum_p))
+  filter(Participant %in% c("Pre", "Con")) %>% select(Participant, SampleID.1, Phylum, Abundance) %>% group_by(Participant, Phylum, SampleID.1) %>% mutate(Abund = Abundance) %>% summarise(sum_p=sum(Abundance)) %>%
+  summarise(av_abund=mean(sum_p), std=sd(sum_p))
+
+phyla_bacte<-depression_smelt_rare %>% filter(Participant %in% c("Pre", "Con")) %>% filter(Phylum=="p__Bacteroidetes") %>% select(Phylum, Abundance)
+
+phyla_bacte %>% group_by(Phylum, Abundance) %>% summarise(meanAbund=mean(Abundance), sd=sd(Abundance))
+
+phyla_firm<-depression_smelt_rare %>% filter(Participant %in% c("Pre", "Con")) %>% filter(Phylum=="p__Firmicutes") %>% select(Participant, Phylum, Abundance, SampleID.1)
+
 
 ggplot(phyla_plot_av, aes(x=Participant, y=av_abund, fill=Phylum))+geom_bar(stat="identity")+scale_x_discrete(labels=c("Controls", "Baseline Depressed"))+scale_fill_manual(values=c("red2", "orange1", "yellow1", "limegreen", "deepskyblue2","purple1", "hotpink"), labels=c("Actinobacteria", "Bacteroidetes", "Firmicutes", "Proteobacteria", "Synergistetes", "TM7", "Verrucomicrobia"))
 
@@ -530,13 +534,14 @@ depdass_roseburia + scale_colour_manual(values=c("green","red"), labels=c("Contr
 
 roseburia_dep<- roseburia_DepDass %>% select(Abundance, DEP_DASS, Participant, OTU)
 
-roseburia_dep
+roseburia_dep%>% summarise(sum_Abund=sum(Abundance), std=sd(Abundance))
 
 ##SevereMild Ruminoc
 severemild_rumino<-depression_smelt_rare %>% mutate(meanAbund= mean(Abundance)) %>% filter(OTU=="295748") %>% mutate(stddev= sd(Abundance)) %>%filter(PRE_BDI_LEVELS %in% c("severe","mild")) %>% select(Abundance, OTU, meanAbund, stddev, PRE_BDI_LEVELS)
 
 ggplot(severemild_rumino, aes(x=PRE_BDI_LEVELS, y=Abundance))+ geom_point()+labs(x="BDI Severity Level", fill="BDI Severity Level", y="% Relative Abundance")+geom_boxplot()+scale_x_discrete(labels=c("Mild","Severe")) 
 
+severemild_rumino
 severemild_rumino %in% count(Abundance, 0)
   
 ##PrePost AlphaDiv
@@ -637,7 +642,7 @@ placebo<-depression_smelt_rare %>% filter(Genus %in% c("g__Bifidobacterium","g__
 
 ```{r StdDev for Mild/Severe}
 
-severemild<-depression_smelt_1 %>% filter(Participant=="Pre") %>% filter(Severe_Mild %in% c("severe", "mild")) %>% filter(OTU=="295748") %>% group_by(Severe_Mild, OTU) %in% select(OTU, Abundance, Severe_Mild)
+severemild<-depression_smelt_rare %>% filter(Participant=="Pre") %>% filter(Severe_Mild %in% c("severe", "mild")) %>% filter(OTU=="295748") %>% group_by(Severe_Mild, OTU) %>% summarise(meanAbund=mean(Abundance), sd=sd(Abundance))
 
 
 severemild_counts<-depression_smelt_fil_counts %>% filter(Participant=="Pre") %>% filter(Severe_Mild %in% c("severe", "mild")) %>% filter(OTU=="295748") %>% group_by(Severe_Mild, OTU) %>% summarise(meanAbund=mean(Abundance), sd=sd(Abundance))
